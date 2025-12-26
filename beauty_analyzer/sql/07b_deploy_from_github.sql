@@ -4,9 +4,11 @@
 -- This script builds and deploys the backend directly from GitHub source code.
 -- NO local Docker required - NO GitHub Actions required - everything in Snowsight!
 --
+-- OWNERSHIP: All objects owned by AGENT_COMMERCE_ROLE (except API integration)
+--
 -- PREREQUISITES:
 --   1. Run 01_setup_database.sql first (creates database, schemas, compute pool)
---   2. Run 00_deploy_from_github_complete.sql PART 2 (creates Git integration)
+--   2. OR run this script standalone (it creates what it needs)
 --
 -- HOW IT WORKS:
 --   Snowflake clones the Git repo and builds the Docker image internally.
@@ -18,23 +20,33 @@
 --
 -- ============================================================================
 
+-- ============================================================================
+-- STEP 1: CREATE API INTEGRATION (requires ACCOUNTADMIN)
+-- ============================================================================
+
 USE ROLE ACCOUNTADMIN;
-USE DATABASE AGENT_COMMERCE;
-USE WAREHOUSE AGENT_COMMERCE_WH;
-USE SCHEMA UTIL;
 
--- ============================================================================
--- STEP 1: CREATE GIT INTEGRATION (if not already created)
--- ============================================================================
-
--- Create API integration for GitHub
+-- Create API integration for GitHub (ACCOUNTADMIN only)
 CREATE OR REPLACE API INTEGRATION github_api_integration
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-amgupta/')
     ENABLED = TRUE
     COMMENT = 'Integration for Agent Commerce GitHub repository';
 
--- Create Git repository connection
+-- Grant usage to AGENT_COMMERCE_ROLE
+GRANT USAGE ON INTEGRATION github_api_integration TO ROLE AGENT_COMMERCE_ROLE;
+
+-- ============================================================================
+-- STEP 2: SWITCH TO AGENT_COMMERCE_ROLE FOR ALL REMAINING OPERATIONS
+-- ============================================================================
+-- This ensures all objects are owned by AGENT_COMMERCE_ROLE
+
+USE ROLE AGENT_COMMERCE_ROLE;
+USE DATABASE AGENT_COMMERCE;
+USE WAREHOUSE AGENT_COMMERCE_WH;
+USE SCHEMA UTIL;
+
+-- Create Git repository connection (owned by AGENT_COMMERCE_ROLE)
 CREATE OR REPLACE GIT REPOSITORY UTIL.AGENT_COMMERCE_GIT
     API_INTEGRATION = github_api_integration
     ORIGIN = 'https://github.com/sfc-gh-amgupta/agent_commerce.git'
@@ -47,10 +59,8 @@ ALTER GIT REPOSITORY UTIL.AGENT_COMMERCE_GIT FETCH;
 LIST @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/backend/;
 
 -- ============================================================================
--- STEP 2: VERIFY IMAGE REPOSITORY EXISTS
+-- STEP 3: VERIFY IMAGE REPOSITORY EXISTS
 -- ============================================================================
-
-USE ROLE AGENT_COMMERCE_ROLE;
 
 CREATE IMAGE REPOSITORY IF NOT EXISTS AGENT_COMMERCE_REPO
     COMMENT = 'Container images for Agent Commerce';
@@ -58,13 +68,10 @@ CREATE IMAGE REPOSITORY IF NOT EXISTS AGENT_COMMERCE_REPO
 SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
 
 -- ============================================================================
--- STEP 3: BUILD IMAGE DIRECTLY FROM GIT REPOSITORY
+-- STEP 4: BUILD IMAGE DIRECTLY FROM GIT REPOSITORY
 -- ============================================================================
 -- No GitHub Actions needed! Snowflake builds the image from source.
 -- Build time: ~5-10 minutes (dlib compilation)
-
--- First, create Git repository connection (if not already created)
--- Note: Requires github_api_integration from 00_deploy_from_github_complete.sql
 
 -- Build image directly from Git repository
 ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO 
@@ -78,13 +85,13 @@ ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO
 -- SELECT SYSTEM$GET_BUILD_STATUS('/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest');
 
 -- ============================================================================
--- STEP 4: VERIFY IMAGE WAS BUILT
+-- STEP 5: VERIFY IMAGE WAS BUILT
 -- ============================================================================
 
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
 
 -- ============================================================================
--- STEP 5: CREATE SPCS SERVICE
+-- STEP 6: CREATE SPCS SERVICE (owned by AGENT_COMMERCE_ROLE)
 -- ============================================================================
 
 CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
@@ -115,7 +122,7 @@ CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
     COMMENT = 'Face recognition and skin analysis backend service';
 
 -- ============================================================================
--- STEP 6: VERIFY SERVICE STATUS
+-- STEP 7: VERIFY SERVICE STATUS
 -- ============================================================================
 
 -- Check service status
@@ -172,11 +179,15 @@ SELECT SYSTEM$CALL_SPCS_SERVICE(
 -- 
 -- This workflow enables Snowsight-only deployment:
 --   1. Developer pushes code to GitHub
---   2. GitHub Actions automatically builds and pushes image to ghcr.io
---   3. User runs this SQL script in Snowsight
---   4. Snowflake pulls image from ghcr.io and starts service
+--   2. User runs this SQL script in Snowsight
+--   3. Snowflake builds Docker image directly from Git source
+--   4. Service starts with all objects owned by AGENT_COMMERCE_ROLE
 --
--- No local Docker installation required for end users!
+-- OWNERSHIP:
+--   - API Integration: ACCOUNTADMIN (required)
+--   - All other objects: AGENT_COMMERCE_ROLE
+--
+-- No local Docker or GitHub Actions required!
 --
 -- ============================================================================
 

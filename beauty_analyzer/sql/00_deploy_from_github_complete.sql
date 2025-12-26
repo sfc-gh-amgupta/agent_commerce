@@ -6,17 +6,23 @@
 -- demo using ONLY Snowsight. No local tools required!
 --
 -- WHAT THIS SCRIPT DOES:
---   1. Creates database, schemas, warehouse, compute pool
---   2. Clones GitHub repository into Snowflake
---   3. Loads all CSV data from Git repo
---   4. Loads all images from Git repo  
---   5. Pulls Docker image from GitHub Container Registry
---   6. Creates SPCS backend service
---   7. Creates Cortex services (Search, Semantic Views)
+--   1. Creates AGENT_COMMERCE_ROLE and grants account-level privileges
+--   2. Creates database, schemas, warehouse, compute pool (all owned by role)
+--   3. Clones GitHub repository into Snowflake
+--   4. Loads all CSV data from Git repo
+--   5. Loads all images from Git repo  
+--   6. Builds Docker image directly from Git repo (no GitHub Actions needed!)
+--   7. Creates SPCS backend service
+--   8. Creates Cortex services (Search, Semantic Views)
+--
+-- OWNERSHIP STRATEGY:
+--   - All objects are owned by AGENT_COMMERCE_ROLE (not ACCOUNTADMIN)
+--   - Only API Integration is created by ACCOUNTADMIN (required)
+--   - This enables clean teardown: DROP ROLE CASCADE cleans up everything
 --
 -- PREREQUISITES:
---   - ACCOUNTADMIN role (or role with CREATE DATABASE, CREATE INTEGRATION)
---   - Network access to github.com and ghcr.io
+--   - ACCOUNTADMIN role (for initial setup and API integration)
+--   - Network access to github.com
 --
 -- SOURCE REPOSITORY:
 --   https://github.com/sfc-gh-amgupta/agent_commerce
@@ -29,53 +35,18 @@
 
 USE ROLE ACCOUNTADMIN;
 
--- Create database
-CREATE DATABASE IF NOT EXISTS AGENT_COMMERCE
-    COMMENT = 'Agent Commerce Demo - AI-powered shopping assistant';
+-- ============================================================================
+-- STEP 1A: Create application role FIRST with necessary account-level privileges
+-- ============================================================================
 
-USE DATABASE AGENT_COMMERCE;
-
--- Create schemas
-CREATE SCHEMA IF NOT EXISTS UTIL COMMENT = 'Utilities, configs, and shared resources';
-CREATE SCHEMA IF NOT EXISTS PRODUCTS COMMENT = 'Product catalog and pricing';
-CREATE SCHEMA IF NOT EXISTS CUSTOMERS COMMENT = 'Customer profiles and face embeddings';
-CREATE SCHEMA IF NOT EXISTS INVENTORY COMMENT = 'Stock levels and locations';
-CREATE SCHEMA IF NOT EXISTS SOCIAL COMMENT = 'Reviews and social proof';
-CREATE SCHEMA IF NOT EXISTS CART_OLTP COMMENT = 'Transactional cart and orders (Hybrid Tables)';
-
--- Create warehouse
-CREATE WAREHOUSE IF NOT EXISTS AGENT_COMMERCE_WH
-    WAREHOUSE_SIZE = 'SMALL'
-    AUTO_SUSPEND = 60
-    AUTO_RESUME = TRUE
-    COMMENT = 'Warehouse for Agent Commerce workloads';
-
-USE WAREHOUSE AGENT_COMMERCE_WH;
-
--- Create compute pool for SPCS
-CREATE COMPUTE POOL IF NOT EXISTS AGENT_COMMERCE_POOL
-    MIN_NODES = 1
-    MAX_NODES = 3
-    INSTANCE_FAMILY = CPU_X64_S
-    AUTO_SUSPEND_SECS = 300
-    COMMENT = 'Compute pool for ML backend services';
-
--- Create image repository
-CREATE IMAGE REPOSITORY IF NOT EXISTS UTIL.AGENT_COMMERCE_REPO
-    COMMENT = 'Container images for Agent Commerce';
-
--- Create application role
 CREATE ROLE IF NOT EXISTS AGENT_COMMERCE_ROLE
-    COMMENT = 'Role for Agent Commerce application';
+    COMMENT = 'Role for Agent Commerce application - owns all demo objects';
 
--- Grant permissions
-GRANT USAGE ON DATABASE AGENT_COMMERCE TO ROLE AGENT_COMMERCE_ROLE;
-GRANT USAGE ON ALL SCHEMAS IN DATABASE AGENT_COMMERCE TO ROLE AGENT_COMMERCE_ROLE;
-GRANT CREATE TABLE, CREATE VIEW, CREATE STAGE, CREATE FUNCTION, CREATE PROCEDURE 
-    ON ALL SCHEMAS IN DATABASE AGENT_COMMERCE TO ROLE AGENT_COMMERCE_ROLE;
-GRANT USAGE ON WAREHOUSE AGENT_COMMERCE_WH TO ROLE AGENT_COMMERCE_ROLE;
-GRANT USAGE ON COMPUTE POOL AGENT_COMMERCE_POOL TO ROLE AGENT_COMMERCE_ROLE;
-GRANT READ, WRITE ON IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO TO ROLE AGENT_COMMERCE_ROLE;
+-- Grant account-level privileges needed for resource creation
+GRANT CREATE DATABASE ON ACCOUNT TO ROLE AGENT_COMMERCE_ROLE;
+GRANT CREATE WAREHOUSE ON ACCOUNT TO ROLE AGENT_COMMERCE_ROLE;
+GRANT CREATE COMPUTE POOL ON ACCOUNT TO ROLE AGENT_COMMERCE_ROLE;
+GRANT BIND SERVICE ENDPOINT ON ACCOUNT TO ROLE AGENT_COMMERCE_ROLE;
 
 -- Grant role to current user
 DECLARE
@@ -86,19 +57,71 @@ BEGIN
 END;
 
 -- ============================================================================
+-- STEP 1B: Switch to AGENT_COMMERCE_ROLE to create objects (ensures ownership)
+-- ============================================================================
+
+USE ROLE AGENT_COMMERCE_ROLE;
+
+-- Create database (now owned by AGENT_COMMERCE_ROLE)
+CREATE DATABASE IF NOT EXISTS AGENT_COMMERCE
+    COMMENT = 'Agent Commerce Demo - AI-powered shopping assistant';
+
+USE DATABASE AGENT_COMMERCE;
+
+-- Create schemas (owned by AGENT_COMMERCE_ROLE)
+CREATE SCHEMA IF NOT EXISTS UTIL COMMENT = 'Utilities, configs, and shared resources';
+CREATE SCHEMA IF NOT EXISTS PRODUCTS COMMENT = 'Product catalog and pricing';
+CREATE SCHEMA IF NOT EXISTS CUSTOMERS COMMENT = 'Customer profiles and face embeddings';
+CREATE SCHEMA IF NOT EXISTS INVENTORY COMMENT = 'Stock levels and locations';
+CREATE SCHEMA IF NOT EXISTS SOCIAL COMMENT = 'Reviews and social proof';
+CREATE SCHEMA IF NOT EXISTS CART_OLTP COMMENT = 'Transactional cart and orders (Hybrid Tables)';
+
+-- Create warehouse (owned by AGENT_COMMERCE_ROLE)
+CREATE WAREHOUSE IF NOT EXISTS AGENT_COMMERCE_WH
+    WAREHOUSE_SIZE = 'SMALL'
+    AUTO_SUSPEND = 60
+    AUTO_RESUME = TRUE
+    COMMENT = 'Warehouse for Agent Commerce workloads';
+
+USE WAREHOUSE AGENT_COMMERCE_WH;
+
+-- Create compute pool (owned by AGENT_COMMERCE_ROLE)
+CREATE COMPUTE POOL IF NOT EXISTS AGENT_COMMERCE_POOL
+    MIN_NODES = 1
+    MAX_NODES = 3
+    INSTANCE_FAMILY = CPU_X64_S
+    AUTO_SUSPEND_SECS = 300
+    COMMENT = 'Compute pool for ML backend services';
+
+-- Create image repository (owned by AGENT_COMMERCE_ROLE)
+CREATE IMAGE REPOSITORY IF NOT EXISTS UTIL.AGENT_COMMERCE_REPO
+    COMMENT = 'Container images for Agent Commerce';
+
+-- ============================================================================
 -- PART 2: GIT INTEGRATION
 -- ============================================================================
 
 USE SCHEMA UTIL;
 
--- Create API integration for GitHub
+-- API Integration requires ACCOUNTADMIN
+USE ROLE ACCOUNTADMIN;
+
+-- Create API integration for GitHub (ACCOUNTADMIN only)
 CREATE OR REPLACE API INTEGRATION github_api_integration
     API_PROVIDER = GIT_HTTPS_API
     API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-amgupta/')
     ENABLED = TRUE
     COMMENT = 'Integration for Agent Commerce GitHub repository';
 
--- Create Git repository stage
+-- Grant usage on API integration to AGENT_COMMERCE_ROLE
+GRANT USAGE ON INTEGRATION github_api_integration TO ROLE AGENT_COMMERCE_ROLE;
+
+-- Switch back to AGENT_COMMERCE_ROLE for remaining operations
+USE ROLE AGENT_COMMERCE_ROLE;
+USE DATABASE AGENT_COMMERCE;
+USE SCHEMA UTIL;
+
+-- Create Git repository stage (now owned by AGENT_COMMERCE_ROLE)
 CREATE OR REPLACE GIT REPOSITORY UTIL.AGENT_COMMERCE_GIT
     API_INTEGRATION = github_api_integration
     ORIGIN = 'https://github.com/sfc-gh-amgupta/agent_commerce.git'
@@ -113,8 +136,7 @@ LIST @UTIL.AGENT_COMMERCE_GIT/branches/main/;
 -- ============================================================================
 -- PART 3: CREATE TABLES (from Git repo SQL)
 -- ============================================================================
-
-USE ROLE AGENT_COMMERCE_ROLE;
+-- Note: Already using AGENT_COMMERCE_ROLE, so all tables will be owned by it
 
 -- Execute table creation script from Git
 EXECUTE IMMEDIATE FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/sql/02_create_tables.sql;
@@ -290,9 +312,8 @@ SELECT * FROM CART_OLTP.CART_SESSIONS_STAGING;
 -- ============================================================================
 -- No GitHub Actions needed! Snowflake builds the image from source.
 -- Build time: ~5-10 minutes (dlib compilation)
+-- Note: Already using AGENT_COMMERCE_ROLE, so image owned by it
 -- ============================================================================
-
-USE ROLE AGENT_COMMERCE_ROLE;
 
 -- Build image directly from Git repository
 -- The Dockerfile and source code are in: beauty_analyzer/backend/
@@ -373,6 +394,29 @@ SELECT SYSTEM$GET_SERVICE_STATUS('UTIL.AGENT_COMMERCE_BACKEND');
 SHOW ENDPOINTS IN SERVICE UTIL.AGENT_COMMERCE_BACKEND;
 
 -- ============================================================================
+-- VERIFY OWNERSHIP - All objects should be owned by AGENT_COMMERCE_ROLE
+-- ============================================================================
+
+-- Check database ownership
+SELECT 'DATABASE' AS object_type, 'AGENT_COMMERCE' AS object_name, 
+       (SELECT database_owner FROM INFORMATION_SCHEMA.DATABASES 
+        WHERE database_name = 'AGENT_COMMERCE') AS owner;
+
+-- Check schema ownership
+SELECT 'SCHEMA' AS object_type, schema_name AS object_name, catalog_owner AS owner
+FROM AGENT_COMMERCE.INFORMATION_SCHEMA.SCHEMATA
+WHERE catalog_name = 'AGENT_COMMERCE';
+
+-- Check warehouse ownership
+SHOW WAREHOUSES LIKE 'AGENT_COMMERCE_WH';
+
+-- Check compute pool ownership
+SHOW COMPUTE POOLS LIKE 'AGENT_COMMERCE_POOL';
+
+-- Check service ownership
+SHOW SERVICES IN SCHEMA UTIL;
+
+-- ============================================================================
 -- DEPLOYMENT COMPLETE!
 -- ============================================================================
 --
@@ -380,7 +424,18 @@ SHOW ENDPOINTS IN SERVICE UTIL.AGENT_COMMERCE_BACKEND;
 --
 -- Service Endpoint: (see output above)
 -- Database: AGENT_COMMERCE
+-- Owner: AGENT_COMMERCE_ROLE
 -- 
+-- All objects are owned by AGENT_COMMERCE_ROLE for easy management.
+--
+-- CLEANUP (when done):
+--   USE ROLE ACCOUNTADMIN;
+--   DROP DATABASE IF EXISTS AGENT_COMMERCE CASCADE;
+--   DROP WAREHOUSE IF EXISTS AGENT_COMMERCE_WH;
+--   DROP COMPUTE POOL IF EXISTS AGENT_COMMERCE_POOL;
+--   DROP INTEGRATION IF EXISTS github_api_integration;
+--   DROP ROLE IF EXISTS AGENT_COMMERCE_ROLE;
+--
 -- Next: Deploy the React frontend to interact with the backend
 --
 -- ============================================================================
