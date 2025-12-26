@@ -373,45 +373,56 @@ FILE_FORMAT = UTIL.CSV_FORMAT
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- ============================================================================
--- PART 7: GET DOCKER IMAGE
+-- PART 7: GET DOCKER IMAGE FROM DOCKER HUB
 -- ============================================================================
--- OPTION A: Pull pre-built image from GitHub Container Registry (recommended)
--- OPTION B: Build locally with Docker Desktop (see beauty_analyzer/backend/deploy.sh)
+-- The image is hosted on Docker Hub (public): sfcamgupta/agent-commerce-backend
+-- We need to create an external access integration to pull from Docker Hub
 -- ============================================================================
 
--- OPTION A: Pull from GitHub Container Registry (ghcr.io)
--- The image is built automatically by GitHub Actions on every push to main
--- See: .github/workflows/build-and-push.yml
+USE ROLE ACCOUNTADMIN;
 
--- First, check if image repository exists
+-- Step 1: Create network rule for Docker Hub
+CREATE OR REPLACE NETWORK RULE UTIL.DOCKERHUB_NETWORK_RULE
+    TYPE = HOST_PORT
+    MODE = EGRESS
+    VALUE_LIST = ('index.docker.io:443', 'registry-1.docker.io:443', 'auth.docker.io:443', 'production.cloudflare.docker.com:443');
+
+-- Step 2: Create external access integration
+CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION DOCKERHUB_ACCESS_INTEGRATION
+    ALLOWED_NETWORK_RULES = (AGENT_COMMERCE.UTIL.DOCKERHUB_NETWORK_RULE)
+    ENABLED = TRUE
+    COMMENT = 'Integration to pull images from Docker Hub';
+
+-- Grant usage to AGENT_COMMERCE_ROLE
+GRANT USAGE ON INTEGRATION DOCKERHUB_ACCESS_INTEGRATION TO ROLE AGENT_COMMERCE_ROLE;
+
+-- Switch back to application role
+USE ROLE AGENT_COMMERCE_ROLE;
+USE DATABASE AGENT_COMMERCE;
+USE SCHEMA UTIL;
+
+-- Verify image repository exists
 SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
 
--- Copy image from GitHub Container Registry to Snowflake
--- Note: This requires the ghcr.io image to be public or use secrets for auth
-CALL SYSTEM$REGISTRY_COPY_IMAGE(
-    'ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest',
-    '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest'
-);
+-- ============================================================================
+-- NOTE: For SPCS, you have two options:
+--
+-- OPTION A: Use Docker Hub image directly in service spec (if supported)
+-- OPTION B: Push to Snowflake's internal registry using Docker CLI
+--
+-- Currently, SPCS requires images in Snowflake's registry, so use OPTION B:
+--
+-- Terminal commands to push to Snowflake:
+--   cd beauty_analyzer/backend
+--   ./deploy.sh
+--
+-- This will:
+--   1. Build the image locally
+--   2. Push to Snowflake's image repository
+-- ============================================================================
 
--- Verify image was copied
+-- After pushing via Docker CLI, verify image:
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
-
--- ============================================================================
--- OPTION B: Manual Docker Build (if GitHub image not available)
--- ============================================================================
--- Run these commands in your local terminal:
---
--- cd beauty_analyzer/backend
--- docker build -t agent-commerce-backend:latest .
--- 
--- # Login to Snowflake registry
--- docker login <account>.registry.snowflakecomputing.com -u <username>
---
--- # Tag and push
--- docker tag agent-commerce-backend:latest \
---   <account>.registry.snowflakecomputing.com/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
--- docker push <account>.registry.snowflakecomputing.com/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
--- ============================================================================
 
 -- ============================================================================
 -- PART 8: CREATE SPCS BACKEND SERVICE

@@ -1,13 +1,47 @@
 -- ============================================================================
 -- AGENT COMMERCE - Deploy SPCS Backend from Docker Hub
 -- ============================================================================
--- This script deploys the backend WITHOUT requiring local Docker.
--- The image is pre-built and hosted on Docker Hub.
+-- The backend image is pre-built and hosted on Docker Hub (PUBLIC, no auth required):
+--   amitgupta392/agent-commerce-backend:latest
 --
--- REQUIREMENTS:
---   1. Run 01_setup_database.sql first (creates database, schemas, compute pool)
---   2. Network access to Docker Hub from your Snowflake account
+-- SPCS REQUIREMENT: Images must be in Snowflake's internal registry.
+-- This script guides you through pulling from Docker Hub and pushing to Snowflake.
 --
+-- PREREQUISITES:
+--   1. Run 01_setup_database.sql first
+--   2. Docker Desktop installed and running
+--
+-- ============================================================================
+
+-- ============================================================================
+-- STEP 1: PULL FROM DOCKER HUB AND PUSH TO SNOWFLAKE (Terminal)
+-- ============================================================================
+-- Run these commands in your terminal:
+--
+-- # Pull the pre-built image from Docker Hub (no auth required!)
+-- docker pull amitgupta392/agent-commerce-backend:latest
+--
+-- # Get your Snowflake account info
+-- # Format: <orgname>-<account_name> or <account_locator>.<region>
+-- # Example: sfsenorthamerica-myaccount or abc12345.us-east-1
+--
+-- # Set your registry URL (replace with your account)
+-- export REGISTRY="<your-account>.registry.snowflakecomputing.com"
+--
+-- # Login to Snowflake registry
+-- docker login $REGISTRY
+--
+-- # Tag the image for Snowflake
+-- docker tag amitgupta392/agent-commerce-backend:latest \
+--   $REGISTRY/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
+--
+-- # Push to Snowflake
+-- docker push $REGISTRY/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
+--
+-- ============================================================================
+
+-- ============================================================================
+-- STEP 2: VERIFY IMAGE IN SNOWFLAKE (Run in Snowsight)
 -- ============================================================================
 
 USE ROLE AGENT_COMMERCE_ROLE;
@@ -15,60 +49,14 @@ USE DATABASE AGENT_COMMERCE;
 USE WAREHOUSE AGENT_COMMERCE_WH;
 USE SCHEMA UTIL;
 
--- ============================================================================
--- STEP 1: VERIFY IMAGE REPOSITORY EXISTS
--- ============================================================================
-
+-- Verify image repository exists
 SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
 
--- If not exists, create it:
-CREATE IMAGE REPOSITORY IF NOT EXISTS AGENT_COMMERCE_REPO
-    COMMENT = 'Container images for Agent Commerce';
-
--- ============================================================================
--- STEP 2: PULL IMAGE FROM DOCKER HUB
--- ============================================================================
--- NOTE: Replace 'agentcommerce/backend' with the actual Docker Hub image
--- This is a placeholder - the actual image would be published to Docker Hub
-
--- Option A: If using public Docker Hub image
--- CALL SYSTEM$REGISTRY_COPY_IMAGE(
---     'docker.io/agentcommerce/backend:latest',
---     '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest'
--- );
-
--- ============================================================================
--- ALTERNATIVE: BUILD FROM S3 STAGE
--- ============================================================================
--- If you have the Docker context in S3, you can build directly:
-
--- Step 1: Create storage integration (ACCOUNTADMIN required)
--- CREATE OR REPLACE STORAGE INTEGRATION agent_commerce_s3_int
---     TYPE = EXTERNAL_STAGE
---     STORAGE_PROVIDER = 'S3'
---     ENABLED = TRUE
---     STORAGE_AWS_ROLE_ARN = 'arn:aws:iam::<account>:role/<role>'
---     STORAGE_ALLOWED_LOCATIONS = ('s3://<bucket>/agent-commerce/');
-
--- Step 2: Create external stage
--- CREATE OR REPLACE STAGE UTIL.DOCKER_BUILD_STAGE
---     STORAGE_INTEGRATION = agent_commerce_s3_int
---     URL = 's3://<bucket>/agent-commerce/docker/';
-
--- Step 3: Build from stage
--- ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO 
---     ADD IMAGE 'agent-commerce-backend:latest'
---     FROM STAGE @UTIL.DOCKER_BUILD_STAGE;
-
--- ============================================================================
--- STEP 3: VERIFY IMAGE
--- ============================================================================
-
--- List images in repository
+-- List images in repository (should see agent-commerce-backend)
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
 
 -- ============================================================================
--- STEP 4: CREATE SPCS SERVICE
+-- STEP 3: CREATE SPCS SERVICE
 -- ============================================================================
 
 CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
@@ -99,23 +87,31 @@ CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
     COMMENT = 'Face recognition and skin analysis backend service';
 
 -- ============================================================================
--- STEP 5: VERIFY SERVICE
+-- STEP 4: VERIFY SERVICE STATUS
 -- ============================================================================
 
--- Check service status
+-- Check service status (wait for READY)
 SELECT SYSTEM$GET_SERVICE_STATUS('UTIL.AGENT_COMMERCE_BACKEND');
 
--- Get service logs
+-- Get service logs (useful for debugging)
 SELECT SYSTEM$GET_SERVICE_LOGS('UTIL.AGENT_COMMERCE_BACKEND', 0, 'backend', 50);
 
--- Get public endpoint
+-- Get public endpoint URL
 SHOW ENDPOINTS IN SERVICE UTIL.AGENT_COMMERCE_BACKEND;
+
+-- ============================================================================
+-- TEST THE SERVICE
+-- ============================================================================
+
+-- Test health endpoint (after service is READY)
+-- Replace <endpoint_url> with the URL from SHOW ENDPOINTS
+-- curl https://<endpoint_url>/health
 
 -- ============================================================================
 -- SERVICE MANAGEMENT
 -- ============================================================================
 
--- Suspend service (save costs)
+-- Suspend service (save costs when not in use)
 -- ALTER SERVICE UTIL.AGENT_COMMERCE_BACKEND SUSPEND;
 
 -- Resume service
@@ -124,3 +120,15 @@ SHOW ENDPOINTS IN SERVICE UTIL.AGENT_COMMERCE_BACKEND;
 -- Drop service
 -- DROP SERVICE IF EXISTS UTIL.AGENT_COMMERCE_BACKEND;
 
+-- ============================================================================
+-- QUICK REFERENCE: Docker Hub Image Details
+-- ============================================================================
+-- 
+-- Image: amitgupta392/agent-commerce-backend:latest (PUBLIC)
+-- Size: ~2GB (includes dlib, MediaPipe, OpenCV)
+-- Endpoints:
+--   - GET  /health           - Health check
+--   - POST /extract-embedding - Extract face embedding from base64 image
+--   - POST /analyze-skin     - Analyze skin tone from base64 image
+--
+-- ============================================================================
