@@ -373,55 +373,29 @@ FILE_FORMAT = UTIL.CSV_FORMAT
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- ============================================================================
--- PART 7: GET DOCKER IMAGE FROM DOCKER HUB
+-- PART 7: PUSH DOCKER IMAGE TO SNOWFLAKE (REQUIRES DOCKER CLI)
 -- ============================================================================
--- The image is hosted on Docker Hub (public): sfcamgupta/agent-commerce-backend
--- We need to create an external access integration to pull from Docker Hub
--- ============================================================================
-
-USE ROLE ACCOUNTADMIN;
-
--- Step 1: Create network rule for Docker Hub
-CREATE OR REPLACE NETWORK RULE UTIL.DOCKERHUB_NETWORK_RULE
-    TYPE = HOST_PORT
-    MODE = EGRESS
-    VALUE_LIST = ('index.docker.io:443', 'registry-1.docker.io:443', 'auth.docker.io:443', 'production.cloudflare.docker.com:443');
-
--- Step 2: Create external access integration
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION DOCKERHUB_ACCESS_INTEGRATION
-    ALLOWED_NETWORK_RULES = (AGENT_COMMERCE.UTIL.DOCKERHUB_NETWORK_RULE)
-    ENABLED = TRUE
-    COMMENT = 'Integration to pull images from Docker Hub';
-
--- Grant usage to AGENT_COMMERCE_ROLE
-GRANT USAGE ON INTEGRATION DOCKERHUB_ACCESS_INTEGRATION TO ROLE AGENT_COMMERCE_ROLE;
-
--- Switch back to application role
-USE ROLE AGENT_COMMERCE_ROLE;
-USE DATABASE AGENT_COMMERCE;
-USE SCHEMA UTIL;
-
--- Verify image repository exists
-SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
-
--- ============================================================================
--- NOTE: For SPCS, you have two options:
+-- SPCS requires images in Snowflake's internal registry.
+-- Run this in your terminal BEFORE continuing:
 --
--- OPTION A: Use Docker Hub image directly in service spec (if supported)
--- OPTION B: Push to Snowflake's internal registry using Docker CLI
---
--- Currently, SPCS requires images in Snowflake's registry, so use OPTION B:
---
--- Terminal commands to push to Snowflake:
 --   cd beauty_analyzer/backend
 --   ./deploy.sh
 --
--- This will:
---   1. Build the image locally
---   2. Push to Snowflake's image repository
+-- OR use the pre-built Docker Hub image:
+--
+--   cd beauty_analyzer/backend  
+--   ./pull_and_push.sh
+--
+-- Both scripts will:
+--   1. Prompt for your Snowflake account and credentials
+--   2. Build/pull the Docker image
+--   3. Push to your Snowflake image repository
+--
+-- Docker Hub image (public, no auth required):
+--   amitgupta392/agent-commerce-backend:latest
 -- ============================================================================
 
--- After pushing via Docker CLI, verify image:
+-- After running deploy.sh or pull_and_push.sh, verify image was uploaded:
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
 
 -- ============================================================================
