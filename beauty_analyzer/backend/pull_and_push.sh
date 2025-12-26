@@ -36,8 +36,8 @@ echo ""
 read -p "Snowflake Account (e.g., abc12345.us-east-1 or ORGNAME-ACCOUNTNAME): " SNOWFLAKE_ACCOUNT
 read -p "Snowflake Username: " SNOWFLAKE_USER
 
-# Build registry URL (must be lowercase for Docker)
-REGISTRY=$(echo "${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com" | tr '[:upper:]' '[:lower:]')
+# Build registry URL (must be lowercase for Docker, underscores become hyphens)
+REGISTRY=$(echo "${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com" | tr '[:upper:]' '[:lower:]' | tr '_' '-')
 
 SNOWFLAKE_IMAGE="${REGISTRY}/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest"
 
@@ -63,8 +63,11 @@ echo ""
 # ============================================================================
 
 echo "2️⃣  Logging into Snowflake registry..."
-echo "   (Enter your Snowflake password when prompted)"
-docker login ${REGISTRY} -u ${SNOWFLAKE_USER}
+read -s -p "   Enter your Snowflake password: " SNOWFLAKE_PASSWORD
+echo ""
+
+# Use password-stdin to avoid credential helper issues
+echo "${SNOWFLAKE_PASSWORD}" | docker login ${REGISTRY} -u ${SNOWFLAKE_USER} --password-stdin
 echo "   ✅ Login successful"
 echo ""
 
