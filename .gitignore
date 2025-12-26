@@ -1,0 +1,36 @@
+# Python
+__pycache__/
+*.py[cod]
+*$py.class
+*.so
+.Python
+venv/
+env/
+.env
+
+# IDE
+.idea/
+.vscode/
+*.swp
+*.swo
+.DS_Store
+
+# Docker build artifacts
+*.log
+
+# Temp files
+*.tmp
+*.bak
+.cache/
+
+# Snowflake
+*.snappy
+
+# Large datasets - exclude FairFace (users download separately if needed)
+beauty_analyzer/sample_images/fairface_data/
+
+# Swatches - only include unique color samples (in swatches_unique/)
+beauty_analyzer/data/generated/images/swatches/
+
+# Keep labels - all 2,000 included
+# Keep faces - 200 samples included

@@ -1,0 +1,19 @@
+# Agent Commerce Backend - Slim Requirements
+# dlib and face_recognition are in base image
+
+# Web framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Image processing (numpy/PIL may be in base, but ensure correct versions)
+Pillow>=9.0.0
+numpy>=1.21.0
+opencv-python-headless>=4.5.0
+
+# MediaPipe for face mesh
+mediapipe>=0.10.0
+
+# Utilities
+pydantic>=2.0.0
+requests>=2.28.0
