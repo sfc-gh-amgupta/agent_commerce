@@ -318,7 +318,9 @@ PATTERN = '.*\.png';
 -- ============================================================================
 -- PART 6: LOAD CART_OLTP DATA (Hybrid Tables)
 -- ============================================================================
--- Hybrid Tables support COPY INTO directly - no staging tables needed!
+-- Hybrid Tables support COPY INTO but with restrictions:
+--   - ON_ERROR = 'CONTINUE' is NOT supported
+--   - Data must be clean (no errors allowed)
 -- Note: CSVs already copied to @UTIL.CSV_DATA_STAGE in PART 4
 
 -- Fulfillment Options
@@ -326,7 +328,6 @@ COPY INTO CART_OLTP.FULFILLMENT_OPTIONS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('fulfillment_options.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Payment Methods
@@ -334,7 +335,6 @@ COPY INTO CART_OLTP.PAYMENT_METHODS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('payment_methods.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Cart Sessions
@@ -342,7 +342,6 @@ COPY INTO CART_OLTP.CART_SESSIONS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('cart_sessions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Cart Items
@@ -350,7 +349,6 @@ COPY INTO CART_OLTP.CART_ITEMS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('cart_items.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Orders
@@ -358,7 +356,6 @@ COPY INTO CART_OLTP.ORDERS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('orders.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Order Items
@@ -366,7 +363,6 @@ COPY INTO CART_OLTP.ORDER_ITEMS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('order_items.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Payment Transactions
@@ -374,7 +370,6 @@ COPY INTO CART_OLTP.PAYMENT_TRANSACTIONS
 FROM @UTIL.CSV_DATA_STAGE/
 FILES = ('payment_transactions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
-ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- ============================================================================
