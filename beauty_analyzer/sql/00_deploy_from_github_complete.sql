@@ -144,6 +144,10 @@ EXECUTE IMMEDIATE FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/sq
 -- ============================================================================
 -- PART 4: LOAD CSV DATA FROM GIT REPOSITORY
 -- ============================================================================
+-- Note: COPY INTO doesn't support Git stages directly, so we:
+--   1. Create an internal stage for CSV data
+--   2. Copy files from Git repo to internal stage
+--   3. COPY INTO tables from internal stage
 
 -- Create file format for CSVs
 CREATE OR REPLACE FILE FORMAT UTIL.CSV_FORMAT
@@ -154,102 +158,130 @@ CREATE OR REPLACE FILE FORMAT UTIL.CSV_FORMAT
     EMPTY_FIELD_AS_NULL = TRUE
     ERROR_ON_COLUMN_COUNT_MISMATCH = FALSE;
 
+-- Create internal stage for CSV data
+CREATE STAGE IF NOT EXISTS UTIL.CSV_DATA_STAGE
+    COMMENT = 'Internal stage for CSV data files';
+
+-- Copy all CSV files from Git to internal stage
+COPY FILES INTO @UTIL.CSV_DATA_STAGE/
+FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/
+PATTERN = '.*\.csv';
+
+-- Verify files copied
+LIST @UTIL.CSV_DATA_STAGE/;
+
 -- Load Products
 COPY INTO PRODUCTS.PRODUCTS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/products.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('products.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRODUCT_VARIANTS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_variants.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_variants.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRODUCT_MEDIA
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_media.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_media.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRODUCT_LABELS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_labels.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_labels.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRODUCT_INGREDIENTS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_ingredients.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_ingredients.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRODUCT_WARNINGS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_warnings.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_warnings.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PRICE_HISTORY
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/price_history.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('price_history.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO PRODUCTS.PROMOTIONS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/promotions.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('promotions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Load Customers
 COPY INTO CUSTOMERS.CUSTOMERS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/customers.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('customers.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO CUSTOMERS.SKIN_ANALYSIS_HISTORY
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/skin_analysis_history.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('skin_analysis_history.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Load Inventory
 COPY INTO INVENTORY.LOCATIONS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/locations.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('locations.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO INVENTORY.STOCK_LEVELS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/stock_levels.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('stock_levels.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO INVENTORY.INVENTORY_TRANSACTIONS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/inventory_transactions.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('inventory_transactions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- Load Social
 COPY INTO SOCIAL.PRODUCT_REVIEWS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/product_reviews.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('product_reviews.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO SOCIAL.SOCIAL_MENTIONS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/social_mentions.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('social_mentions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 COPY INTO SOCIAL.INFLUENCER_MENTIONS
-FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/influencer_mentions.csv
+FROM @UTIL.CSV_DATA_STAGE/
+FILES = ('influencer_mentions.csv')
 FILE_FORMAT = UTIL.CSV_FORMAT
 ON_ERROR = 'CONTINUE'
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
@@ -286,26 +318,64 @@ PATTERN = '.*\.png';
 -- ============================================================================
 -- PART 6: LOAD CART_OLTP DATA (Hybrid Tables)
 -- ============================================================================
-
 -- For Hybrid Tables, use staging tables then INSERT
+-- Note: CSVs already copied to @UTIL.CSV_DATA_STAGE in PART 4
 
 -- Fulfillment Options
 CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.FULFILLMENT_OPTIONS_STAGING AS
-SELECT * FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/fulfillment_options.csv
+SELECT * FROM @UTIL.CSV_DATA_STAGE/fulfillment_options.csv
 (FILE_FORMAT => UTIL.CSV_FORMAT);
 
 INSERT INTO CART_OLTP.FULFILLMENT_OPTIONS 
 SELECT * FROM CART_OLTP.FULFILLMENT_OPTIONS_STAGING;
 
+-- Payment Methods
+CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.PAYMENT_METHODS_STAGING AS
+SELECT * FROM @UTIL.CSV_DATA_STAGE/payment_methods.csv
+(FILE_FORMAT => UTIL.CSV_FORMAT);
+
+INSERT INTO CART_OLTP.PAYMENT_METHODS 
+SELECT * FROM CART_OLTP.PAYMENT_METHODS_STAGING;
+
 -- Cart Sessions
 CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.CART_SESSIONS_STAGING AS
-SELECT * FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/data/generated/csv/cart_sessions.csv
+SELECT * FROM @UTIL.CSV_DATA_STAGE/cart_sessions.csv
 (FILE_FORMAT => UTIL.CSV_FORMAT);
 
 INSERT INTO CART_OLTP.CART_SESSIONS 
 SELECT * FROM CART_OLTP.CART_SESSIONS_STAGING;
 
--- (Continue for other CART_OLTP tables...)
+-- Cart Items
+CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.CART_ITEMS_STAGING AS
+SELECT * FROM @UTIL.CSV_DATA_STAGE/cart_items.csv
+(FILE_FORMAT => UTIL.CSV_FORMAT);
+
+INSERT INTO CART_OLTP.CART_ITEMS 
+SELECT * FROM CART_OLTP.CART_ITEMS_STAGING;
+
+-- Orders
+CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.ORDERS_STAGING AS
+SELECT * FROM @UTIL.CSV_DATA_STAGE/orders.csv
+(FILE_FORMAT => UTIL.CSV_FORMAT);
+
+INSERT INTO CART_OLTP.ORDERS 
+SELECT * FROM CART_OLTP.ORDERS_STAGING;
+
+-- Order Items
+CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.ORDER_ITEMS_STAGING AS
+SELECT * FROM @UTIL.CSV_DATA_STAGE/order_items.csv
+(FILE_FORMAT => UTIL.CSV_FORMAT);
+
+INSERT INTO CART_OLTP.ORDER_ITEMS 
+SELECT * FROM CART_OLTP.ORDER_ITEMS_STAGING;
+
+-- Payment Transactions
+CREATE OR REPLACE TEMPORARY TABLE CART_OLTP.PAYMENT_TRANSACTIONS_STAGING AS
+SELECT * FROM @UTIL.CSV_DATA_STAGE/payment_transactions.csv
+(FILE_FORMAT => UTIL.CSV_FORMAT);
+
+INSERT INTO CART_OLTP.PAYMENT_TRANSACTIONS 
+SELECT * FROM CART_OLTP.PAYMENT_TRANSACTIONS_STAGING;
 
 -- ============================================================================
 -- PART 7: BUILD DOCKER IMAGE DIRECTLY FROM GIT REPOSITORY
