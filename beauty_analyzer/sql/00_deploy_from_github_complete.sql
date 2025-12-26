@@ -373,27 +373,45 @@ FILE_FORMAT = UTIL.CSV_FORMAT
 MATCH_BY_COLUMN_NAME = CASE_INSENSITIVE;
 
 -- ============================================================================
--- PART 7: BUILD DOCKER IMAGE DIRECTLY FROM GIT REPOSITORY
+-- PART 7: GET DOCKER IMAGE
 -- ============================================================================
--- No GitHub Actions needed! Snowflake builds the image from source.
--- Build time: ~5-10 minutes (dlib compilation)
--- Note: Already using AGENT_COMMERCE_ROLE, so image owned by it
+-- OPTION A: Pull pre-built image from GitHub Container Registry (recommended)
+-- OPTION B: Build locally with Docker Desktop (see beauty_analyzer/backend/deploy.sh)
 -- ============================================================================
 
--- Build image directly from Git repository
--- The Dockerfile and source code are in: beauty_analyzer/backend/
-ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO 
-    BUILD 
-    IMAGE 'agent-commerce-backend'
-    TAG 'latest'
-    FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/backend/
-    DOCKERFILE_PATH = 'Dockerfile';
+-- OPTION A: Pull from GitHub Container Registry (ghcr.io)
+-- The image is built automatically by GitHub Actions on every push to main
+-- See: .github/workflows/build-and-push.yml
 
--- Note: Build takes 5-10 minutes. Check progress with:
--- SELECT SYSTEM$GET_BUILD_STATUS('/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest');
+-- First, check if image repository exists
+SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
 
--- Verify image was built
+-- Copy image from GitHub Container Registry to Snowflake
+-- Note: This requires the ghcr.io image to be public or use secrets for auth
+CALL SYSTEM$REGISTRY_COPY_IMAGE(
+    'ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest',
+    '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest'
+);
+
+-- Verify image was copied
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
+
+-- ============================================================================
+-- OPTION B: Manual Docker Build (if GitHub image not available)
+-- ============================================================================
+-- Run these commands in your local terminal:
+--
+-- cd beauty_analyzer/backend
+-- docker build -t agent-commerce-backend:latest .
+-- 
+-- # Login to Snowflake registry
+-- docker login <account>.registry.snowflakecomputing.com -u <username>
+--
+-- # Tag and push
+-- docker tag agent-commerce-backend:latest \
+--   <account>.registry.snowflakecomputing.com/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
+-- docker push <account>.registry.snowflakecomputing.com/agent_commerce/util/agent_commerce_repo/agent-commerce-backend:latest
+-- ============================================================================
 
 -- ============================================================================
 -- PART 8: CREATE SPCS BACKEND SERVICE
