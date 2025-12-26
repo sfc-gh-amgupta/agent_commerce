@@ -286,33 +286,27 @@ SELECT * FROM CART_OLTP.CART_SESSIONS_STAGING;
 -- (Continue for other CART_OLTP tables...)
 
 -- ============================================================================
--- PART 7: PULL DOCKER IMAGE FROM GITHUB CONTAINER REGISTRY
+-- PART 7: BUILD DOCKER IMAGE DIRECTLY FROM GIT REPOSITORY
 -- ============================================================================
-
-USE ROLE ACCOUNTADMIN;
-
--- Create network rule for GitHub Container Registry
-CREATE OR REPLACE NETWORK RULE ghcr_network_rule
-    TYPE = HOST_PORT
-    VALUE_LIST = ('ghcr.io:443', 'pkg-containers.githubusercontent.com:443')
-    MODE = EGRESS;
-
--- Create external access integration
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION ghcr_access_integration
-    ALLOWED_NETWORK_RULES = (ghcr_network_rule)
-    ENABLED = TRUE;
-
-GRANT USAGE ON INTEGRATION ghcr_access_integration TO ROLE AGENT_COMMERCE_ROLE;
+-- No GitHub Actions needed! Snowflake builds the image from source.
+-- Build time: ~5-10 minutes (dlib compilation)
+-- ============================================================================
 
 USE ROLE AGENT_COMMERCE_ROLE;
 
--- Copy image from GitHub Container Registry to Snowflake
-CALL SYSTEM$REGISTRY_COPY_IMAGE(
-    'ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest',
-    '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest'
-);
+-- Build image directly from Git repository
+-- The Dockerfile and source code are in: beauty_analyzer/backend/
+ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO 
+    BUILD 
+    IMAGE 'agent-commerce-backend'
+    TAG 'latest'
+    FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/backend/
+    DOCKERFILE_PATH = 'Dockerfile';
 
--- Verify image
+-- Note: Build takes 5-10 minutes. Check progress with:
+-- SELECT SYSTEM$GET_BUILD_STATUS('/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest');
+
+-- Verify image was built
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
 
 -- ============================================================================

@@ -1,58 +1,53 @@
 -- ============================================================================
--- AGENT COMMERCE - Deploy SPCS Backend from GitHub Container Registry
+-- AGENT COMMERCE - Deploy SPCS Backend from GitHub Repository
 -- ============================================================================
--- This script deploys the backend using an image hosted on GitHub (ghcr.io).
--- NO local Docker required - everything runs in Snowsight!
+-- This script builds and deploys the backend directly from GitHub source code.
+-- NO local Docker required - NO GitHub Actions required - everything in Snowsight!
 --
 -- PREREQUISITES:
---   1. Run 01_setup_database.sql first
---   2. GitHub Actions has pushed image to ghcr.io (automatic on push to main)
+--   1. Run 01_setup_database.sql first (creates database, schemas, compute pool)
+--   2. Run 00_deploy_from_github_complete.sql PART 2 (creates Git integration)
 --
--- IMAGE LOCATION:
---   ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest
+-- HOW IT WORKS:
+--   Snowflake clones the Git repo and builds the Docker image internally.
+--   Build time: ~5-10 minutes (dlib compilation)
+--
+-- SOURCE:
+--   https://github.com/sfc-gh-amgupta/agent_commerce
+--   Path: beauty_analyzer/backend/
 --
 -- ============================================================================
 
-USE ROLE ACCOUNTADMIN;  -- Required for external access integration
+USE ROLE ACCOUNTADMIN;
 USE DATABASE AGENT_COMMERCE;
 USE WAREHOUSE AGENT_COMMERCE_WH;
 USE SCHEMA UTIL;
 
 -- ============================================================================
--- STEP 1: CREATE EXTERNAL ACCESS INTEGRATION FOR GHCR.IO
+-- STEP 1: CREATE GIT INTEGRATION (if not already created)
 -- ============================================================================
--- This allows Snowflake to pull images from GitHub Container Registry
 
--- Create network rule for GitHub Container Registry
-CREATE OR REPLACE NETWORK RULE ghcr_network_rule
-    TYPE = HOST_PORT
-    VALUE_LIST = ('ghcr.io:443', 'pkg-containers.githubusercontent.com:443')
-    MODE = EGRESS
-    COMMENT = 'Allow access to GitHub Container Registry';
-
--- Create external access integration
-CREATE OR REPLACE EXTERNAL ACCESS INTEGRATION ghcr_access_integration
-    ALLOWED_NETWORK_RULES = (ghcr_network_rule)
+-- Create API integration for GitHub
+CREATE OR REPLACE API INTEGRATION github_api_integration
+    API_PROVIDER = GIT_HTTPS_API
+    API_ALLOWED_PREFIXES = ('https://github.com/sfc-gh-amgupta/')
     ENABLED = TRUE
-    COMMENT = 'Integration for pulling images from GitHub Container Registry';
+    COMMENT = 'Integration for Agent Commerce GitHub repository';
 
--- Grant usage to our role
-GRANT USAGE ON INTEGRATION ghcr_access_integration TO ROLE AGENT_COMMERCE_ROLE;
+-- Create Git repository connection
+CREATE OR REPLACE GIT REPOSITORY UTIL.AGENT_COMMERCE_GIT
+    API_INTEGRATION = github_api_integration
+    ORIGIN = 'https://github.com/sfc-gh-amgupta/agent_commerce.git'
+    COMMENT = 'Agent Commerce source code and data';
 
--- ============================================================================
--- STEP 2: CREATE SECRET FOR PRIVATE GITHUB REPOS (Optional)
--- ============================================================================
--- If your GitHub repo is PRIVATE, you need a Personal Access Token (PAT)
--- Skip this if your repo/package is PUBLIC
+-- Fetch latest from repository
+ALTER GIT REPOSITORY UTIL.AGENT_COMMERCE_GIT FETCH;
 
--- CREATE OR REPLACE SECRET ghcr_credentials
---     TYPE = USERNAME_PASSWORD
---     USERNAME = 'sfc-gh-amgupta'
---     PASSWORD = 'ghp_xxxxxxxxxxxxxxxxxxxx'  -- GitHub PAT with packages:read
---     COMMENT = 'GitHub PAT for pulling container images';
+-- Verify connection - should show Dockerfile and app/ folder
+LIST @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/backend/;
 
 -- ============================================================================
--- STEP 3: VERIFY IMAGE REPOSITORY EXISTS
+-- STEP 2: VERIFY IMAGE REPOSITORY EXISTS
 -- ============================================================================
 
 USE ROLE AGENT_COMMERCE_ROLE;
@@ -63,31 +58,33 @@ CREATE IMAGE REPOSITORY IF NOT EXISTS AGENT_COMMERCE_REPO
 SHOW IMAGE REPOSITORIES IN SCHEMA UTIL;
 
 -- ============================================================================
--- STEP 4: COPY IMAGE FROM GHCR.IO TO SNOWFLAKE
+-- STEP 3: BUILD IMAGE DIRECTLY FROM GIT REPOSITORY
 -- ============================================================================
--- This pulls the image from GitHub Container Registry into Snowflake's registry
+-- No GitHub Actions needed! Snowflake builds the image from source.
+-- Build time: ~5-10 minutes (dlib compilation)
 
--- For PUBLIC packages:
-CALL SYSTEM$REGISTRY_COPY_IMAGE(
-    'ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest',
-    '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest'
-);
+-- First, create Git repository connection (if not already created)
+-- Note: Requires github_api_integration from 00_deploy_from_github_complete.sql
 
--- For PRIVATE packages (requires secret):
--- CALL SYSTEM$REGISTRY_COPY_IMAGE(
---     'ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest',
---     '/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest',
---     OBJECT_CONSTRUCT('secret', 'UTIL.ghcr_credentials')
--- );
+-- Build image directly from Git repository
+ALTER IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO 
+    BUILD 
+    IMAGE 'agent-commerce-backend'
+    TAG 'latest'
+    FROM @UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/backend/
+    DOCKERFILE_PATH = 'Dockerfile';
+
+-- Monitor build progress (run periodically):
+-- SELECT SYSTEM$GET_BUILD_STATUS('/AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest');
 
 -- ============================================================================
--- STEP 5: VERIFY IMAGE WAS COPIED
+-- STEP 4: VERIFY IMAGE WAS BUILT
 -- ============================================================================
 
 SHOW IMAGES IN IMAGE REPOSITORY UTIL.AGENT_COMMERCE_REPO;
 
 -- ============================================================================
--- STEP 6: CREATE SPCS SERVICE
+-- STEP 5: CREATE SPCS SERVICE
 -- ============================================================================
 
 CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
@@ -118,7 +115,7 @@ CREATE SERVICE IF NOT EXISTS UTIL.AGENT_COMMERCE_BACKEND
     COMMENT = 'Face recognition and skin analysis backend service';
 
 -- ============================================================================
--- STEP 7: VERIFY SERVICE STATUS
+-- STEP 6: VERIFY SERVICE STATUS
 -- ============================================================================
 
 -- Check service status
