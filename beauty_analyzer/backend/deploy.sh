@@ -14,20 +14,16 @@ echo ""
 
 # Prompt for account if not set
 if [ -z "$SNOWFLAKE_ACCOUNT" ]; then
-    read -p "Enter Snowflake Account (e.g., abc12345.us-east-1): " SNOWFLAKE_ACCOUNT
+    read -p "Enter Snowflake Account (e.g., abc12345.us-east-1 or ORGNAME-ACCOUNTNAME): " SNOWFLAKE_ACCOUNT
 fi
 
-# Prompt for org if not set
-if [ -z "$SNOWFLAKE_ORG" ]; then
-    read -p "Enter Snowflake Org Name (or press Enter to skip): " SNOWFLAKE_ORG
+# Prompt for Snowflake username
+if [ -z "$SNOWFLAKE_USER" ]; then
+    read -p "Enter Snowflake Username: " SNOWFLAKE_USER
 fi
 
-# Build registry URL
-if [ -n "$SNOWFLAKE_ORG" ]; then
-    REGISTRY="${SNOWFLAKE_ORG}-${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com"
-else
-    REGISTRY="${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com"
-fi
+# Build registry URL (must be lowercase for Docker)
+REGISTRY=$(echo "${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com" | tr '[:upper:]' '[:lower:]')
 
 REPO_PATH="agent_commerce/util/agent_commerce_repo"
 IMAGE_NAME="agent-commerce-backend"
@@ -36,6 +32,7 @@ FULL_IMAGE="${REGISTRY}/${REPO_PATH}/${IMAGE_NAME}:latest"
 echo ""
 echo "📦 Configuration:"
 echo "   Registry: ${REGISTRY}"
+echo "   Username: ${SNOWFLAKE_USER}"
 echo "   Image: ${FULL_IMAGE}"
 echo ""
 
@@ -47,8 +44,8 @@ echo ""
 
 # Step 2: Login
 echo "2️⃣  Logging into Snowflake registry..."
-echo "   (Enter your Snowflake username and password)"
-docker login ${REGISTRY}
+echo "   (Enter your Snowflake password when prompted)"
+docker login ${REGISTRY} -u ${SNOWFLAKE_USER}
 echo "   ✅ Login successful"
 echo ""
 
