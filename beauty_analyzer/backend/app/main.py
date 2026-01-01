@@ -813,6 +813,23 @@ async def startup_event():
     else:
         logger.warning(f"⚠️ Static directory not found: {STATIC_DIR}")
 
+# Root route - serve index.html
+@app.get("/")
+async def serve_root():
+    """Serve the React SPA index.html for root path."""
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    # Fallback if no static files
+    return JSONResponse({
+        "message": "Agent Commerce Backend",
+        "status": "running",
+        "docs": "/docs",
+        "health": "/health",
+        "note": "Frontend not deployed. Static files not found."
+    })
+
 # Catch-all route for SPA - must be last
 @app.get("/{full_path:path}")
 async def serve_spa(full_path: str):
@@ -826,7 +843,7 @@ async def serve_spa(full_path: str):
     if static_file.exists() and static_file.is_file():
         return FileResponse(static_file)
     
-    # Serve index.html for SPA routing
+    # Serve index.html for SPA routing (handles /admin, /demo, etc.)
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
