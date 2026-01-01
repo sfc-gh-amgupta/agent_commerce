@@ -800,16 +800,27 @@ async def update_config(config: Dict[str, Any]):
 # Serve static files from /static directory
 STATIC_DIR = Path(__file__).parent.parent / "static"
 
+# FastAPI built-in routes that should NOT be caught by catch-all
+RESERVED_PATHS = {"docs", "redoc", "openapi.json", "health"}
+
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup."""
     logger.info("🚀 Agent Commerce Backend starting...")
     logger.info(f"📁 Working directory: {os.getcwd()}")
+    logger.info(f"📁 Static directory: {STATIC_DIR}")
+    logger.info(f"📁 Static exists: {STATIC_DIR.exists()}")
     
-    # Mount static files if directory exists
+    # List static files if directory exists
     if STATIC_DIR.exists():
-        app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
-        logger.info(f"📦 Static files mounted from {STATIC_DIR}")
+        files = list(STATIC_DIR.iterdir())
+        logger.info(f"📦 Static files: {[f.name for f in files]}")
+        
+        # Mount assets subdirectory if it exists
+        assets_dir = STATIC_DIR / "assets"
+        if assets_dir.exists():
+            app.mount("/assets", StaticFiles(directory=assets_dir), name="assets")
+            logger.info(f"📦 Assets mounted from {assets_dir}")
     else:
         logger.warning(f"⚠️ Static directory not found: {STATIC_DIR}")
 
@@ -817,43 +828,69 @@ async def startup_event():
 @app.get("/")
 async def serve_root():
     """Serve the React SPA index.html for root path."""
+    logger.info("📥 Serving root route /")
     index_file = STATIC_DIR / "index.html"
+    
     if index_file.exists():
+        logger.info(f"✅ Found index.html at {index_file}")
         return FileResponse(index_file)
     
+    logger.warning(f"⚠️ index.html not found at {index_file}")
     # Fallback if no static files
     return JSONResponse({
         "message": "Agent Commerce Backend",
         "status": "running",
         "docs": "/docs",
         "health": "/health",
-        "note": "Frontend not deployed. Static files not found."
+        "static_dir": str(STATIC_DIR),
+        "static_exists": STATIC_DIR.exists(),
+        "note": "Frontend not deployed. Run deploy.sh to build and push frontend."
     })
 
-# Catch-all route for SPA - must be last
-@app.get("/{full_path:path}")
-async def serve_spa(full_path: str):
-    """Serve the React SPA for all non-API routes."""
-    # Skip API routes
-    if full_path.startswith("api/"):
-        raise HTTPException(status_code=404, detail="API endpoint not found")
-    
-    # Try to serve static file
-    static_file = STATIC_DIR / full_path
-    if static_file.exists() and static_file.is_file():
-        return FileResponse(static_file)
-    
-    # Serve index.html for SPA routing (handles /admin, /demo, etc.)
+# Admin route
+@app.get("/admin")
+async def serve_admin():
+    """Serve the admin panel."""
     index_file = STATIC_DIR / "index.html"
     if index_file.exists():
         return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Admin panel not available - frontend not deployed")
+
+# Demo route
+@app.get("/demo")
+async def serve_demo():
+    """Serve the demo page."""
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    raise HTTPException(status_code=404, detail="Demo page not available - frontend not deployed")
+
+# Catch-all route for SPA and static files - must be last
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve static files or SPA for all non-API/non-reserved routes."""
+    logger.info(f"📥 Catch-all route for: /{full_path}")
     
-    # Fallback response if no static files
-    return JSONResponse({
-        "message": "Agent Commerce Backend",
-        "docs": "/docs",
-        "health": "/health"
-    })
+    # Skip reserved FastAPI routes - let FastAPI handle them
+    if full_path in RESERVED_PATHS or full_path.startswith("api/"):
+        logger.info(f"⏭️ Skipping reserved path: {full_path}")
+        raise HTTPException(status_code=404, detail="Not found")
+    
+    # Try to serve static file directly (e.g., .js, .css, images)
+    static_file = STATIC_DIR / full_path
+    if static_file.exists() and static_file.is_file():
+        logger.info(f"✅ Serving static file: {static_file}")
+        return FileResponse(static_file)
+    
+    # For SPA routes (admin, demo, etc.), serve index.html
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        logger.info(f"✅ Serving index.html for SPA route: /{full_path}")
+        return FileResponse(index_file)
+    
+    # No frontend available
+    logger.warning(f"⚠️ No frontend for: /{full_path}")
+    raise HTTPException(status_code=404, detail="Resource not found")
 
 if __name__ == "__main__":
     import uvicorn
