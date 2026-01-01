@@ -22,12 +22,12 @@
 -- │ AnalyzeFace             │ generic (function)      │ CUSTOMERS.TOOL_ANALYZE_FACE                    │
 -- │ IdentifyCustomer        │ generic (function)      │ CUSTOMERS.TOOL_IDENTIFY_CUSTOMER               │
 -- │ MatchProducts           │ generic (function)      │ PRODUCTS.TOOL_MATCH_PRODUCTS                   │
--- │ CreateCartSession       │ generic (procedure)     │ CART_OLTP.TOOL_CREATE_CART_SESSION             │
--- │ GetCartSession          │ generic (function)      │ CART_OLTP.TOOL_GET_CART_SESSION                │
--- │ AddToCart               │ generic (procedure)     │ CART_OLTP.TOOL_ADD_TO_CART                     │
--- │ UpdateCartItem          │ generic (procedure)     │ CART_OLTP.TOOL_UPDATE_CART_ITEM                │
--- │ RemoveFromCart          │ generic (procedure)     │ CART_OLTP.TOOL_REMOVE_FROM_CART                │
--- │ SubmitOrder             │ generic (procedure)     │ CART_OLTP.TOOL_SUBMIT_ORDER                    │
+-- │ ACP_CreateCart          │ generic (procedure)     │ CART_OLTP.TOOL_CREATE_CART_SESSION             │
+-- │ ACP_GetCart             │ generic (function)      │ CART_OLTP.TOOL_GET_CART_SESSION                │
+-- │ ACP_AddItem             │ generic (procedure)     │ CART_OLTP.TOOL_ADD_TO_CART                     │
+-- │ ACP_UpdateItem          │ generic (procedure)     │ CART_OLTP.TOOL_UPDATE_CART_ITEM                │
+-- │ ACP_RemoveItem          │ generic (procedure)     │ CART_OLTP.TOOL_REMOVE_FROM_CART                │
+-- │ ACP_Checkout            │ generic (procedure)     │ CART_OLTP.TOOL_SUBMIT_ORDER                    │
 -- └─────────────────────────┴─────────────────────────┴────────────────────────────────────────────────┘
 --
 -- Reference: https://docs.snowflake.com/en/sql-reference/sql/create-agent
@@ -44,9 +44,9 @@ USE SCHEMA UTIL;
 -- CREATE CORTEX AGENT
 -- ============================================================================
 
-CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
-  COMMENT = 'AI Beauty Advisor with face analysis, product matching, and agentic checkout'
-  PROFILE = '{"display_name": "Beauty Advisor", "avatar": "beauty-icon.png", "color": "pink"}'
+CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
+  COMMENT = 'AI Commerce Assistant with face analysis, product matching, and ACP-compliant checkout'
+  PROFILE = '{"display_name": "Commerce Assistant", "avatar": "commerce-icon.png", "color": "blue"}'
   FROM SPECIFICATION
   $$
   models:
@@ -59,9 +59,9 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
 
   instructions:
     response: |
-      You are a friendly and knowledgeable Beauty Advisor. Provide personalized 
-      cosmetic recommendations based on customer preferences, skin analysis, and 
-      product reviews. Always be helpful, honest, and explain beauty concepts in 
+      You are a friendly and knowledgeable Commerce Assistant. Provide personalized 
+      product recommendations based on customer preferences, skin analysis, and 
+      product reviews. Always be helpful, honest, and explain concepts in 
       simple terms.
     
     orchestration: |
@@ -83,15 +83,15 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
       INVENTORY:
       - Stock availability, store locations: use InventoryAnalyst
       
-      CART & CHECKOUT FLOW:
-      1. CreateCartSession - Start a new cart for the customer
-      2. AddToCart - Add products to cart (requires session_id, product_id, quantity, variant_id)
-      3. GetCartSession - Show cart contents
-      4. UpdateCartItem / RemoveFromCart - Modify cart
-      5. SubmitOrder - Complete the order
+      CART & CHECKOUT FLOW (ACP-Compliant):
+      1. ACP_CreateCart - Start a new cart for the customer
+      2. ACP_AddItem - Add products to cart (requires session_id, product_id, quantity, variant_id)
+      3. ACP_GetCart - Show cart contents
+      4. ACP_UpdateItem / ACP_RemoveItem - Modify cart
+      5. ACP_Checkout - Complete the order
     
     system: |
-      You are the AI Beauty Advisor for an upscale cosmetics retailer.
+      You are the AI Commerce Assistant for an upscale cosmetics retailer.
       
       CAPABILITIES:
       - Analyze face images for skin tone, lip color, undertone, Fitzpatrick type, Monk shade
@@ -261,11 +261,12 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
             - target_hex
     
     # =========================================================================
-    # GENERIC TOOLS - Cart/Checkout (6) - Stored Procedures for transactions
+    # GENERIC TOOLS - ACP Cart/Checkout (6) - Stored Procedures for transactions
+    # ACP = Agentic Commerce Protocol (OpenAI standard)
     # =========================================================================
     - tool_spec:
         type: generic
-        name: CreateCartSession
+        name: ACP_CreateCart
         description: |
           Create a new cart session for a customer. Call this first before 
           adding items. Returns a session_id for subsequent cart operations.
@@ -280,7 +281,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
     
     - tool_spec:
         type: generic
-        name: GetCartSession
+        name: ACP_GetCart
         description: |
           Get current cart contents including all items, quantities, prices 
           (in cents), item count, and subtotal. Use to show the customer their cart.
@@ -295,7 +296,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
     
     - tool_spec:
         type: generic
-        name: AddToCart
+        name: ACP_AddItem
         description: |
           Add a product to the customer's cart. Returns the added item 
           details including price in cents.
@@ -321,7 +322,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
     
     - tool_spec:
         type: generic
-        name: UpdateCartItem
+        name: ACP_UpdateItem
         description: |
           Update the quantity of an item already in the cart.
         input_schema:
@@ -329,7 +330,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
           properties:
             item_id:
               type: string
-              description: Cart item ID to update (from GetCartSession)
+              description: Cart item ID to update (from ACP_GetCart)
             new_quantity:
               type: integer
               description: New quantity for the item
@@ -339,7 +340,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
     
     - tool_spec:
         type: generic
-        name: RemoveFromCart
+        name: ACP_RemoveItem
         description: |
           Remove an item from the cart completely.
         input_schema:
@@ -347,13 +348,13 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
           properties:
             item_id:
               type: string
-              description: Cart item ID to remove (from GetCartSession)
+              description: Cart item ID to remove (from ACP_GetCart)
           required:
             - item_id
     
     - tool_spec:
         type: generic
-        name: SubmitOrder
+        name: ACP_Checkout
         description: |
           Finalize the checkout and create an order. Processes all cart items,
           creates the order record, and returns confirmation with order_id, 
@@ -425,7 +426,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.PRODUCTS.TOOL_MATCH_PRODUCTS
     
-    GetCartSession:
+    ACP_GetCart:
       type: function
       execution_environment:
         type: warehouse
@@ -433,8 +434,8 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.CART_OLTP.TOOL_GET_CART_SESSION
     
-    # Generic -> Stored Procedures (type: procedure)
-    CreateCartSession:
+    # Generic -> ACP Stored Procedures (type: procedure)
+    ACP_CreateCart:
       type: procedure
       execution_environment:
         type: warehouse
@@ -442,7 +443,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.CART_OLTP.TOOL_CREATE_CART_SESSION
     
-    AddToCart:
+    ACP_AddItem:
       type: procedure
       execution_environment:
         type: warehouse
@@ -450,7 +451,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.CART_OLTP.TOOL_ADD_TO_CART
     
-    UpdateCartItem:
+    ACP_UpdateItem:
       type: procedure
       execution_environment:
         type: warehouse
@@ -458,7 +459,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.CART_OLTP.TOOL_UPDATE_CART_ITEM
     
-    RemoveFromCart:
+    ACP_RemoveItem:
       type: procedure
       execution_environment:
         type: warehouse
@@ -466,7 +467,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         query_timeout: 30
       identifier: AGENT_COMMERCE.CART_OLTP.TOOL_REMOVE_FROM_CART
     
-    SubmitOrder:
+    ACP_Checkout:
       type: procedure
       execution_environment:
         type: warehouse
@@ -476,7 +477,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
   $$;
 
 -- Grant usage on the agent
-GRANT USAGE ON AGENT UTIL.BEAUTY_ADVISOR_AGENT TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT TO ROLE AGENT_COMMERCE_ROLE;
 
 -- ============================================================================
 -- VERIFICATION
@@ -485,7 +486,7 @@ GRANT USAGE ON AGENT UTIL.BEAUTY_ADVISOR_AGENT TO ROLE AGENT_COMMERCE_ROLE;
 SELECT '✅ Cortex Agent Created Successfully!' AS status;
 
 -- Describe the agent
-DESCRIBE AGENT UTIL.BEAUTY_ADVISOR_AGENT;
+DESCRIBE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT;
 
 -- Show all agents
 SHOW AGENTS IN SCHEMA UTIL;
@@ -496,7 +497,7 @@ SHOW AGENTS IN SCHEMA UTIL;
 -- 
 -- To interact with the agent, use the Cortex Agent REST API:
 -- 
--- POST /api/v2/databases/AGENT_COMMERCE/schemas/UTIL/agents/BEAUTY_ADVISOR_AGENT/runs
+-- POST /api/v2/databases/AGENT_COMMERCE/schemas/UTIL/agents/AGENTIC_COMMERCE_ASSISTANT/runs
 -- {
 --   "messages": [
 --     {"role": "user", "content": "What lipsticks do you recommend for warm undertones?"}
