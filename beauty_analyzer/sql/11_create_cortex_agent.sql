@@ -372,21 +372,41 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
   # TOOL RESOURCES - Map tools to Snowflake objects
   # ===========================================================================
   tool_resources:
-    # Cortex Analyst -> Semantic Views
+    # Cortex Analyst -> Semantic Views (require execution_environment with warehouse)
     CustomerAnalyst:
       semantic_view: AGENT_COMMERCE.CUSTOMERS.CUSTOMER_SEMANTIC_VIEW
+      execution_environment:
+        type: warehouse
+        warehouse: AGENT_COMMERCE_WH
+        query_timeout: 60
     
     ProductAnalyst:
       semantic_view: AGENT_COMMERCE.PRODUCTS.PRODUCT_SEMANTIC_VIEW
+      execution_environment:
+        type: warehouse
+        warehouse: AGENT_COMMERCE_WH
+        query_timeout: 60
     
     InventoryAnalyst:
       semantic_view: AGENT_COMMERCE.INVENTORY.INVENTORY_SEMANTIC_VIEW
+      execution_environment:
+        type: warehouse
+        warehouse: AGENT_COMMERCE_WH
+        query_timeout: 60
     
     SocialAnalyst:
       semantic_view: AGENT_COMMERCE.SOCIAL.SOCIAL_PROOF_SEMANTIC_VIEW
+      execution_environment:
+        type: warehouse
+        warehouse: AGENT_COMMERCE_WH
+        query_timeout: 60
     
     CheckoutAnalyst:
       semantic_view: AGENT_COMMERCE.CART_OLTP.CART_SEMANTIC_VIEW
+      execution_environment:
+        type: warehouse
+        warehouse: AGENT_COMMERCE_WH
+        query_timeout: 60
     
     # Cortex Search -> Search Services
     ProductSearch:
