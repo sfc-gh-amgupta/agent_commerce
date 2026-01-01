@@ -1,8 +1,19 @@
-# Beauty Analyzer - Architecture Documentation
+# Agent Commerce - Architecture Documentation
 
-> AI-Powered Beauty Advisor with Face Recognition, Skin Analysis, and Product Matching
+> AI-Powered Commerce Assistant with Face Recognition, Skin Analysis, Product Matching, and ACP-Compliant Checkout
 > 
 > Powered by Snowflake Cortex Agent + Snowpark Container Services
+
+## Quick Reference
+
+| Component | Name | Status |
+|-----------|------|--------|
+| **Cortex Agent** | `UTIL.AGENTIC_COMMERCE_ASSISTANT` | ✅ Deployed |
+| **SPCS Backend** | Face recognition, skin analysis | ✅ Running |
+| **Cortex Analyst** | 5 Semantic Views | ✅ Connected |
+| **Cortex Search** | 2 Search Services | ✅ Connected |
+| **Beauty Tools** | AnalyzeFace, IdentifyCustomer, MatchProducts | ✅ 3 Tools |
+| **ACP Cart Tools** | ACP_CreateCart, ACP_GetCart, ACP_AddItem, ACP_UpdateItem, ACP_RemoveItem, ACP_Checkout | ✅ 6 Tools |
 
 ---
 
@@ -93,7 +104,7 @@
 │  ┌───────────────────────────────────────────────────────────────────────────┐  │
 │  │                           DATA LAYER (Schemas)                             │  │
 │  │  ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐ ┌──────────┐        │  │
-│  │  │CUSTOMERS │ │PRODUCTS  │ │INVENTORY │ │ SOCIAL   │ │CHECKOUT  │        │  │
+│  │  │CUSTOMERS │ │PRODUCTS  │ │INVENTORY │ │ SOCIAL   │ │CART_OLTP │        │  │
 │  │  └──────────┘ └──────────┘ └──────────┘ └──────────┘ └──────────┘        │  │
 │  │  ┌──────────────────────────────────────┐  ┌──────────────────────────┐  │  │
 │  │  │ UTIL (SPCS, shared UDFs)             │  │ DEMO_CONFIG (settings)   │  │  │
@@ -187,43 +198,40 @@
 ### Agent Configuration
 
 ```yaml
-name: beauty_advisor
-model: claude-3-5-sonnet
+name: AGENTIC_COMMERCE_ASSISTANT
+model: claude-4-sonnet
+location: UTIL.AGENTIC_COMMERCE_ASSISTANT
 description: |
-  AI Beauty Advisor that helps customers find perfect cosmetic matches
-  based on skin tone analysis and personal preferences.
+  AI Commerce Assistant with face analysis, product matching, 
+  and ACP-compliant checkout capabilities.
 
-system_prompt: |
-  You are a friendly and knowledgeable Beauty Advisor for {retailer_name}.
-  
-  Your capabilities:
-  - Analyze face images for skin tone, lip color, and undertone
-  - Identify returning customers via face recognition
-  - Recommend products using scientific color matching (CIEDE2000)
-  - Answer questions about products, ingredients, and reviews
-  - Help with checkout and loyalty points
-  
-  Guidelines:
-  - Always confirm customer identity before accessing personal data
-  - Explain color science in simple terms
-  - Provide honest product recommendations
-  - Respect privacy - never store images without consent
+# Created via Cortex Agent GA syntax (CREATE AGENT)
+# See sql/11_create_cortex_agent.sql for full specification
 
 tools:
-  - analyze_face
-  - identify_customer
-  - match_products
-  - query_products
-  - search_products
-  - search_product_labels
-  - query_inventory
-  - query_customer
-  - query_social_proof
-  - search_social_proof
-  - create_checkout_session
-  - add_to_checkout
-  - submit_checkout
-  # ... (see full tool catalog)
+  # Cortex Analyst (5) - Semantic Views for structured queries
+  - CustomerAnalyst        # CUSTOMERS.CUSTOMER_SEMANTIC_VIEW
+  - ProductAnalyst         # PRODUCTS.PRODUCT_SEMANTIC_VIEW
+  - InventoryAnalyst       # INVENTORY.INVENTORY_SEMANTIC_VIEW
+  - SocialAnalyst          # SOCIAL.SOCIAL_PROOF_SEMANTIC_VIEW
+  - CheckoutAnalyst        # CART_OLTP.CART_SEMANTIC_VIEW
+
+  # Cortex Search (2) - Semantic search for discovery
+  - ProductSearch          # PRODUCTS.PRODUCT_SEARCH_SERVICE
+  - SocialSearch           # SOCIAL.SOCIAL_SEARCH_SERVICE
+
+  # Beauty Analysis (3) - Custom UDFs
+  - AnalyzeFace            # CUSTOMERS.TOOL_ANALYZE_FACE (Python UDF → SPCS)
+  - IdentifyCustomer       # CUSTOMERS.TOOL_IDENTIFY_CUSTOMER (SQL UDTF)
+  - MatchProducts          # PRODUCTS.TOOL_MATCH_PRODUCTS (SQL UDTF)
+
+  # ACP Cart/Checkout (6) - Stored Procedures (Hybrid Tables)
+  - ACP_CreateCart         # CART_OLTP.TOOL_CREATE_CART_SESSION
+  - ACP_GetCart            # CART_OLTP.TOOL_GET_CART_SESSION
+  - ACP_AddItem            # CART_OLTP.TOOL_ADD_TO_CART
+  - ACP_UpdateItem         # CART_OLTP.TOOL_UPDATE_CART_ITEM
+  - ACP_RemoveItem         # CART_OLTP.TOOL_REMOVE_FROM_CART
+  - ACP_Checkout           # CART_OLTP.TOOL_SUBMIT_ORDER
 ```
 
 ### Conversation Flow
@@ -352,19 +360,19 @@ tools:
 | `query_social_proof` | Cortex Analyst | Ratings, review counts, trends, influencer stats |
 | `search_social_proof` | Cortex Search | Semantic search across reviews/mentions |
 
-### Agentic Checkout Tools (OpenAI Spec)
+### ACP Cart/Checkout Tools (OpenAI Agentic Commerce Protocol)
 
-| Tool | Description |
-|------|-------------|
-| `create_checkout_session` | Create session from current selections |
-| `get_checkout_session` | Get session state with items and pricing |
-| `add_to_checkout` | Add product to session |
-| `update_checkout_item` | Update item quantity |
-| `remove_from_checkout` | Remove item from session |
-| `get_fulfillment_options` | Get shipping/pickup options |
-| `set_fulfillment` | Set address and shipping method |
-| `get_payment_methods` | Get customer's saved payment methods |
-| `submit_checkout` | Finalize and process payment |
+> **Note:** All cart tools use `ACP_` prefix to indicate ACP compliance.
+> Uses Hybrid Tables for ACID transactions and low-latency operations.
+
+| Tool | Type | Description |
+|------|------|-------------|
+| `ACP_CreateCart` | Procedure | Create new cart session for customer |
+| `ACP_GetCart` | Function | Get cart contents with items and totals |
+| `ACP_AddItem` | Procedure | Add product to cart |
+| `ACP_UpdateItem` | Procedure | Update item quantity |
+| `ACP_RemoveItem` | Procedure | Remove item from cart |
+| `ACP_Checkout` | Procedure | Finalize order and process |
 
 ---
 
@@ -378,9 +386,9 @@ tools:
 | **PRODUCTS** | Catalog, variants, media, labels | Search (products, labels), Analyst |
 | **INVENTORY** | Locations, stock levels, transactions | Analyst |
 | **SOCIAL** | Reviews, mentions, influencers, trends | Search (social content), Analyst |
-| **CHECKOUT** | Sessions, payments, orders | Analyst |
-| **UTIL** | SPCS services, shared UDFs, integrations | — |
-| **DEMO_CONFIG** | Retailer settings, themes, branding | — |
+| **CART_OLTP** | Cart sessions, payments, orders (Hybrid Tables) | Analyst |
+| **UTIL** | SPCS services, shared UDFs, Cortex Agent | — |
+| **DEMO_CONFIG** | Retailer settings, themes, branding (Admin UI) | — |
 
 > **Design Principle:** Each domain schema contains its own Cortex Search services, Cortex Analyst semantic views, and domain-specific UDFs. This keeps related objects together and simplifies access control.
 
@@ -728,88 +736,87 @@ CREATE TABLE TRENDING_PRODUCTS (
 );
 ```
 
-### Agentic Checkout Tables (OpenAI Spec)
+### CART_OLTP Tables (Hybrid Tables for ACID Transactions)
+
+> **Note:** All tables in CART_OLTP are Snowflake Hybrid Tables for:
+> - ACID transactions (cart updates, payments)
+> - Row-level locking (concurrent users)
+> - Enforced foreign key constraints
+> - Low-latency single-row operations (10-50ms)
 
 ```sql
--- Checkout sessions
-CREATE TABLE CHECKOUT_SESSIONS (
-    session_id VARCHAR PRIMARY KEY,
-    customer_id VARCHAR REFERENCES CUSTOMERS(customer_id),
-    status VARCHAR,                -- 'active', 'pending_payment', 'completed', 'expired', 'cancelled'
+-- Cart sessions (HYBRID TABLE)
+CREATE OR REPLACE HYBRID TABLE CART_SESSIONS (
+    session_id VARCHAR(36) PRIMARY KEY,
+    customer_id VARCHAR(36),
+    status VARCHAR(30) NOT NULL DEFAULT 'active',
     
     -- Pricing (amounts in cents for precision)
-    subtotal_cents INTEGER,
-    tax_cents INTEGER,
-    shipping_cents INTEGER,
-    discount_cents INTEGER,
-    total_cents INTEGER,
-    currency VARCHAR DEFAULT 'USD',
+    subtotal_cents INTEGER DEFAULT 0,
+    tax_cents INTEGER DEFAULT 0,
+    shipping_cents INTEGER DEFAULT 0,
+    discount_cents INTEGER DEFAULT 0,
+    total_cents INTEGER DEFAULT 0,
+    currency VARCHAR(3) DEFAULT 'USD',
     
     -- Fulfillment
-    fulfillment_type VARCHAR,      -- 'shipping', 'pickup'
-    shipping_address OBJECT,
-    shipping_method_id VARCHAR,
-    
-    -- Gift options (session level)
-    is_gift BOOLEAN DEFAULT FALSE,
-    gift_message VARCHAR,
-    
-    -- Validation (simple for OpenAI spec)
-    is_valid BOOLEAN DEFAULT TRUE,
-    validation_message VARCHAR,
-    
-    -- Idempotency
-    idempotency_key VARCHAR UNIQUE,
+    fulfillment_type VARCHAR(20),
+    shipping_address VARCHAR(2000),  -- JSON as string (HYBRID limitation)
     
     -- Timestamps
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP(),
-    updated_at TIMESTAMP,
-    expires_at TIMESTAMP
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    updated_at TIMESTAMP_NTZ,
+    expires_at TIMESTAMP_NTZ,
+    
+    INDEX idx_cart_customer (customer_id)
 );
 
--- Line items
-CREATE TABLE LINE_ITEMS (
-    line_item_id VARCHAR PRIMARY KEY,
-    session_id VARCHAR REFERENCES CHECKOUT_SESSIONS(session_id),
-    product_id VARCHAR REFERENCES PRODUCTS(product_id),
-    variant_id VARCHAR,
-    quantity INTEGER,
-    unit_price_cents INTEGER,
-    subtotal_cents INTEGER,
-    added_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+-- Cart items (HYBRID TABLE)
+CREATE OR REPLACE HYBRID TABLE CART_ITEMS (
+    item_id VARCHAR(36) PRIMARY KEY,
+    session_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    variant_id VARCHAR(36),
+    quantity INTEGER NOT NULL DEFAULT 1,
+    unit_price_cents INTEGER NOT NULL,
+    subtotal_cents INTEGER NOT NULL,
+    product_name VARCHAR(255),
+    added_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    
+    FOREIGN KEY (session_id) REFERENCES CART_SESSIONS(session_id),
+    INDEX idx_cart_items_session (session_id)
 );
 
--- Fulfillment options
-CREATE TABLE FULFILLMENT_OPTIONS (
-    option_id VARCHAR PRIMARY KEY,
-    name VARCHAR,                  -- 'Standard Shipping', 'Express', 'Store Pickup'
-    type VARCHAR,                  -- 'shipping', 'pickup'
-    price_cents INTEGER,
-    estimated_days INTEGER,
-    is_available BOOLEAN DEFAULT TRUE
+-- Orders (HYBRID TABLE - created after successful checkout)
+CREATE OR REPLACE HYBRID TABLE ORDERS (
+    order_id VARCHAR(36) PRIMARY KEY,
+    order_number VARCHAR(20) NOT NULL,  -- Human-readable
+    session_id VARCHAR(36),
+    customer_id VARCHAR(36),
+    status VARCHAR(30) NOT NULL DEFAULT 'pending',
+    subtotal_cents INTEGER NOT NULL,
+    tax_cents INTEGER NOT NULL,
+    shipping_cents INTEGER NOT NULL,
+    total_cents INTEGER NOT NULL,
+    created_at TIMESTAMP_NTZ DEFAULT CURRENT_TIMESTAMP(),
+    
+    FOREIGN KEY (session_id) REFERENCES CART_SESSIONS(session_id),
+    INDEX idx_order_customer (customer_id)
 );
 
--- Saved payment methods
-CREATE TABLE PAYMENT_METHODS (
-    payment_method_id VARCHAR PRIMARY KEY,
-    customer_id VARCHAR REFERENCES CUSTOMERS(customer_id),
-    type VARCHAR,                  -- 'card', 'paypal', 'apple_pay'
-    token VARCHAR,                 -- PSP token (never store raw card data)
-    display_name VARCHAR,          -- 'Visa ****4242'
-    is_default BOOLEAN DEFAULT FALSE,
-    expires_at DATE
-);
-
--- Payment transactions
-CREATE TABLE PAYMENT_TRANSACTIONS (
-    transaction_id VARCHAR PRIMARY KEY,
-    session_id VARCHAR REFERENCES CHECKOUT_SESSIONS(session_id),
-    payment_method_id VARCHAR,
-    amount_cents INTEGER,
-    currency VARCHAR,
-    status VARCHAR,                -- 'pending', 'authorized', 'captured', 'failed', 'refunded'
-    psp_reference VARCHAR,         -- External PSP transaction ID
-    created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP()
+-- Order items (HYBRID TABLE)
+CREATE OR REPLACE HYBRID TABLE ORDER_ITEMS (
+    order_item_id VARCHAR(36) PRIMARY KEY,
+    order_id VARCHAR(36) NOT NULL,
+    product_id VARCHAR(36) NOT NULL,
+    variant_id VARCHAR(36),
+    quantity INTEGER NOT NULL,
+    unit_price_cents INTEGER NOT NULL,
+    subtotal_cents INTEGER NOT NULL,
+    product_name VARCHAR(255),
+    
+    FOREIGN KEY (order_id) REFERENCES ORDERS(order_id),
+    INDEX idx_order_items_order (order_id)
 );
 ```
 
@@ -993,38 +1000,38 @@ CREATE CORTEX VECTOR INDEX face_embedding_index
 
 ### Widget Layout
 
+> **Note:** Text input is ALWAYS visible at the bottom - users can type anytime.
+
 ```
 ┌─────────────────────────────────────────┐
 │  HEADER                                 │
 │  ┌────────────────────────────────────┐ │
-│  │ [LOGO]  Beauty Advisor          ✕  │ │
+│  │ [LOGO]  Commerce Assistant      ✕  │ │
 │  │         by [RETAILER NAME]         │ │
 │  └────────────────────────────────────┘ │
 │                                         │
-│  CHAT AREA                              │
+│  CHAT AREA (scrollable)                 │
 │  ┌────────────────────────────────────┐ │
 │  │                                    │ │
 │  │  💬 Message bubbles appear here    │ │
 │  │                                    │ │
 │  │  ┌──────────────────────────────┐  │ │
-│  │  │  Bot: Hi! I'm your Beauty    │  │ │
-│  │  │  Advisor. Ready to find your │  │ │
-│  │  │  perfect shade?              │  │ │
+│  │  │  Bot: Hi! I'm your Commerce  │  │ │
+│  │  │  Assistant. Ready to help?   │  │ │
 │  │  └──────────────────────────────┘  │ │
+│  │                                    │ │
+│  │  [Analysis cards, products, etc.]  │ │
 │  │                                    │ │
 │  └────────────────────────────────────┘ │
 │                                         │
-│  ACTIONS                                │
+│  QUICK ACTIONS (collapsible)            │
 │  ┌────────────────────────────────────┐ │
-│  │  📸 Take a Selfie                  │ │
-│  └────────────────────────────────────┘ │
-│  ┌────────────────────────────────────┐ │
-│  │  📁 Upload a Photo                 │ │
+│  │  📸 Selfie    📁 Upload            │ │
 │  └────────────────────────────────────┘ │
 │                                         │
-│  INPUT                                  │
+│  INPUT (ALWAYS VISIBLE)                 │
 │  ┌────────────────────────────────────┐ │
-│  │  Type a message...            📎 ➤ │ │
+│  │  Type a message...            📎 ➤ │ │  ← Persistent
 │  └────────────────────────────────────┘ │
 │                                         │
 └─────────────────────────────────────────┘
@@ -1058,41 +1065,51 @@ CREATE CORTEX VECTOR INDEX face_embedding_index
 
 ## Customization System
 
-### Configuration Structure
+### Admin Panel (No Code Required)
+
+> **Key Feature:** All customizations are done via Admin UI (`/admin`) - no coding required.
+> Demo presenters can customize the widget appearance in real-time during demos.
 
 ```
-┌─────────────────────────────────────────────────────────────────┐
-│                 CONFIG SOURCES (Priority Order)                  │
-├─────────────────────────────────────────────────────────────────┤
-│                                                                  │
-│  ┌──────────────────┐                                           │
-│  │ 1. Environment   │ ──────┐                                   │
-│  │    Variables     │       │                                   │
-│  └──────────────────┘       │                                   │
-│                             │                                   │
-│  ┌──────────────────┐       │    ┌──────────────────┐          │
-│  │ 2. Admin UI      │ ──────┼───▶│  CONFIG MERGER   │          │
-│  │    Changes       │       │    │                  │          │
-│  └──────────────────┘       │    └────────┬─────────┘          │
-│                             │             │                     │
-│  ┌──────────────────┐       │             │                     │
-│  │ 3. retailer.json │ ──────┤             ▼                     │
-│  │    File          │       │    ┌──────────────────┐          │
-│  └──────────────────┘       │    │ FINAL CONFIG     │          │
-│                             │    └────────┬─────────┘          │
-│  ┌──────────────────┐       │             │                     │
-│  │ 4. Default       │ ──────┘             │                     │
-│  │    Values        │                     │                     │
-│  └──────────────────┘            ┌────────┼────────┐           │
-│                                  │        │        │           │
-│                                  ▼        ▼        ▼           │
-│                           ┌───────┐ ┌───────┐ ┌───────┐        │
-│                           │Widget │ │Theme  │ │Message│        │
-│                           │Render │ │CSS    │ │Templa-│        │
-│                           │       │ │Vars   │ │tes    │        │
-│                           └───────┘ └───────┘ └───────┘        │
-│                                                                  │
-└─────────────────────────────────────────────────────────────────┘
+┌─────────────────────────────────────────────────────────────────────┐
+│  ADMIN PANEL (/admin) - No Code Customization                       │
+├─────────────────────────────────────────────────────────────────────┤
+│                                                                      │
+│  Retailer Name: [Sephora        ]                                   │
+│                                                                      │
+│  Logo: [Upload] [sephora-logo.png ✓]                                │
+│                                                                      │
+│  Theme Presets:                                                      │
+│  [Sephora] [Ulta] [MAC] [Glossier] [Custom]                         │
+│                                                                      │
+│  Colors:                                                             │
+│  Primary:    [■ #000000]   Secondary: [■ #E60023]                   │
+│  Background: [■ #FFFFFF]   Accent:    [■ #C9A050]                   │
+│                                                                      │
+│  Widget Position: ○ Bottom-Left  ● Bottom-Right                     │
+│                                                                      │
+│  Welcome Message:                                                    │
+│  [Hi! I'm your Commerce Assistant. Ready to help?                ]  │
+│                                                                      │
+│  [Save Changes]  ← Updates apply instantly to /demo                  │
+│                                                                      │
+└─────────────────────────────────────────────────────────────────────┘
+```
+
+### Access Points
+
+| User Type | Access | Purpose |
+|-----------|--------|---------|
+| End Customer | `/demo` | Widget experience only |
+| Admin User | `/admin` | Configuration only |
+| Demo Presenter | `/demo` + `/admin` | Full demo capabilities |
+
+### Configuration Priority (Highest to Lowest)
+
+```
+1. Admin UI Changes  ← Live edits during demo (highest priority)
+2. retailer.json file
+3. Default values
 ```
 
 ### Configuration Schema
@@ -1225,14 +1242,15 @@ beauty_analyzer/
 │       └── glossier.json
 │
 ├── sql/
+│   ├── 00_deploy_from_github_complete.sql  # Master one-click deployment script
 │   ├── 01_setup_database.sql         # Database, schemas, warehouse, stages
-│   ├── 02_create_tables.sql          # All domain tables
-│   ├── 03_create_cortex_services.sql # Vector Search, Cortex Search (in domain schemas)
-│   ├── 04_create_semantic_views.sql  # Cortex Analyst models (in domain schemas)
-│   ├── 05_create_udfs.sql            # CIEDE2000, shared UDFs (in UTIL schema)
-│   ├── 06_create_spcs_service.sql    # Compute pool, SPCS service
-│   ├── 07_sample_data.sql            # Products, customers, reviews
-│   └── 08_label_extraction_task.sql  # AI_EXTRACT scheduled task
+│   ├── 02_create_tables.sql          # All domain tables (includes Hybrid Tables)
+│   ├── 03_create_semantic_views.sql  # Cortex Analyst semantic views
+│   ├── 04_create_cortex_search.sql   # Cortex Search services
+│   ├── 05_create_vector_search.sql   # Vector search for face embeddings
+│   ├── 09_load_face_images_and_embeddings.sql  # Face image processing
+│   ├── 10_create_agent_tools.sql     # Custom UDFs/Procedures for agent
+│   └── 11_create_cortex_agent.sql    # Cortex Agent definition (GA syntax)
 │
 ├── semantic_views/                    # Cortex Analyst YAML definitions
 │   ├── customers.yaml                 # → CUSTOMERS schema
@@ -1747,5 +1765,15 @@ END;
 
 ---
 
-*Document Version: 2.0*  
-*Last Updated: December 2024*
+*Document Version: 3.0*  
+*Last Updated: January 2026*
+
+---
+
+## Change Log
+
+| Version | Date | Changes |
+|---------|------|---------|
+| 3.0 | Jan 2026 | Renamed agent to AGENTIC_COMMERCE_ASSISTANT, ACP_ prefix for cart tools, Hybrid Tables for CART_OLTP, Admin UI no-code customization |
+| 2.0 | Dec 2024 | Added Cortex Agent GA syntax, SPCS backend, face embedding pipeline |
+| 1.0 | Nov 2024 | Initial architecture design |
