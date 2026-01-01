@@ -185,15 +185,16 @@ $$
         p.name,
         p.brand,
         p.category,
-        pc.hex_code AS swatch_hex,
+        pv.color_hex AS swatch_hex,
         SQRT(
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 2, 2), 'XX') - t.r, 2) +
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 4, 2), 'XX') - t.g, 2) +
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 6, 2), 'XX') - t.b, 2)
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - t.r, 2) +
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - t.g, 2) +
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - t.b, 2)
         ) AS color_distance
     FROM PRODUCTS.PRODUCTS p
-    JOIN PRODUCTS.PRODUCT_COLORS pc ON p.product_id = pc.product_id
+    JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
     CROSS JOIN target_rgb t
+    WHERE pv.color_hex IS NOT NULL
     ORDER BY color_distance ASC
     LIMIT 10
 $$;
@@ -228,16 +229,17 @@ $$
         p.name,
         p.brand,
         p.category,
-        pc.hex_code AS swatch_hex,
+        pv.color_hex AS swatch_hex,
         SQRT(
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 2, 2), 'XX') - t.r, 2) +
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 4, 2), 'XX') - t.g, 2) +
-            POWER(TO_NUMBER(SUBSTR(pc.hex_code, 6, 2), 'XX') - t.b, 2)
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - t.r, 2) +
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - t.g, 2) +
+            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - t.b, 2)
         ) AS color_distance
     FROM PRODUCTS.PRODUCTS p
-    JOIN PRODUCTS.PRODUCT_COLORS pc ON p.product_id = pc.product_id
+    JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
     CROSS JOIN target_rgb t
-    WHERE LOWER(p.category) = LOWER(category_filter)
+    WHERE pv.color_hex IS NOT NULL
+      AND LOWER(p.category) = LOWER(category_filter)
     ORDER BY color_distance ASC
     LIMIT 10
 $$;
