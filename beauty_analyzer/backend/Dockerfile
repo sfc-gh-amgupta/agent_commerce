@@ -1,9 +1,33 @@
 # ============================================================================
-# Agent Commerce Backend - Dockerfile
+# Agent Commerce - Full Stack Dockerfile
 # ============================================================================
-# Build dlib from source with system cmake
+# Multi-stage build:
+#   Stage 1: Build React frontend
+#   Stage 2: Build Python backend with dlib
 # ============================================================================
 
+# =============================================================================
+# Stage 1: Build Frontend
+# =============================================================================
+FROM node:20-slim AS frontend-builder
+
+WORKDIR /frontend
+
+# Copy package files
+COPY ../frontend/package*.json ./
+
+# Install dependencies
+RUN npm ci
+
+# Copy source code
+COPY ../frontend/ ./
+
+# Build production bundle
+RUN npm run build
+
+# =============================================================================
+# Stage 2: Python Backend
+# =============================================================================
 FROM python:3.9-slim-bullseye
 
 # Install system dependencies
@@ -42,6 +66,9 @@ RUN pip install --no-cache-dir -r requirements-final.txt
 
 # Copy application code
 COPY app/ ./app/
+
+# Copy frontend build from Stage 1
+COPY --from=frontend-builder /frontend/dist ./static/
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser && \

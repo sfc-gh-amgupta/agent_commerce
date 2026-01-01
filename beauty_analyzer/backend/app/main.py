@@ -17,12 +17,15 @@ import io
 import json
 import base64
 import logging
-from typing import List, Optional
+from typing import List, Optional, Dict, Any
 from datetime import datetime
+from pathlib import Path
 
 import numpy as np
-from fastapi import FastAPI, HTTPException, UploadFile, File, Form
+from fastapi import FastAPI, HTTPException, UploadFile, File, Form, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
+from fastapi.responses import FileResponse, JSONResponse
 from pydantic import BaseModel
 
 # Configure logging
@@ -593,14 +596,247 @@ async def analyze_skin_from_file(file: UploadFile = File(...)):
         )
 
 # ============================================================================
-# STARTUP
+# CHAT ENDPOINT - Cortex Agent Integration
 # ============================================================================
+
+class ChatRequest(BaseModel):
+    message: str
+    image_base64: Optional[str] = None
+    session_id: Optional[str] = None
+    customer_id: Optional[str] = None
+
+class ChatResponse(BaseModel):
+    response: str
+    session_id: str
+    tools_used: Optional[List[str]] = None
+    analysis_result: Optional[Dict[str, Any]] = None
+    products: Optional[List[Dict[str, Any]]] = None
+    cart_update: Optional[Dict[str, Any]] = None
+
+# In-memory session storage (for demo - use Redis in production)
+_chat_sessions: Dict[str, List[Dict]] = {}
+_widget_config: Dict[str, Any] = None
+
+@app.post("/api/chat", response_model=ChatResponse)
+async def chat_endpoint(request: ChatRequest):
+    """
+    Main chat endpoint that interacts with the Cortex Agent.
+    
+    In production, this would call:
+    SNOWFLAKE.CORTEX.INVOKE_AGENT('UTIL.AGENTIC_COMMERCE_ASSISTANT', ...)
+    
+    For demo purposes, we simulate responses with local processing.
+    """
+    import uuid
+    
+    session_id = request.session_id or str(uuid.uuid4())
+    tools_used = []
+    analysis_result = None
+    products = None
+    
+    # Initialize session if new
+    if session_id not in _chat_sessions:
+        _chat_sessions[session_id] = []
+    
+    # Store user message
+    _chat_sessions[session_id].append({
+        "role": "user",
+        "content": request.message
+    })
+    
+    # Process image if provided
+    if request.image_base64:
+        tools_used.append("AnalyzeFace")
+        try:
+            image = decode_base64_image(request.image_base64)
+            
+            # Get face embedding
+            embedding_result = extract_face_embedding(image)
+            
+            # Get skin analysis
+            skin_result = analyze_skin(image)
+            
+            if skin_result.get("success"):
+                analysis_result = {
+                    "success": True,
+                    "face_detected": embedding_result.get("face_detected", False),
+                    "skin_hex": skin_result.get("skin_hex"),
+                    "skin_lab": skin_result.get("skin_lab"),
+                    "lip_hex": skin_result.get("lip_hex"),
+                    "fitzpatrick": skin_result.get("fitzpatrick_type"),
+                    "monk_shade": skin_result.get("monk_shade"),
+                    "undertone": skin_result.get("undertone"),
+                    "quality_score": embedding_result.get("quality_score"),
+                    "makeup_detected": False,  # Would detect in production
+                }
+                
+                response_text = f"""Great! I've analyzed your photo. Here's what I found:
+
+**Skin Tone**: {skin_result.get('skin_hex')} (Monk Shade {skin_result.get('monk_shade')})
+**Undertone**: {skin_result.get('undertone', 'neutral').capitalize()}
+**Lip Color**: {skin_result.get('lip_hex', 'N/A')}
+
+Would you like me to recommend some products that match your skin tone? I can suggest:
+- Foundation
+- Lipstick
+- Blush
+
+Just let me know what you're looking for!"""
+            else:
+                response_text = "I couldn't detect a face clearly in that image. Could you try uploading a clearer photo with good lighting?"
+                analysis_result = {
+                    "success": False,
+                    "face_detected": False,
+                    "error": skin_result.get("error")
+                }
+                
+        except Exception as e:
+            logger.error(f"Image analysis failed: {e}")
+            response_text = "I had trouble analyzing that image. Please try again with a different photo."
+            analysis_result = {
+                "success": False,
+                "face_detected": False,
+                "error": str(e)
+            }
+    else:
+        # Text-only message - generate contextual response
+        message_lower = request.message.lower()
+        
+        if any(word in message_lower for word in ['hello', 'hi', 'hey']):
+            response_text = "Hello! 👋 I'm your Commerce Assistant. I can help you find the perfect beauty products based on your skin tone. Would you like to upload a selfie for personalized recommendations?"
+            
+        elif any(word in message_lower for word in ['lipstick', 'lip']):
+            tools_used.append("ProductSearch")
+            response_text = "I'd love to help you find the perfect lipstick! For the best recommendations, I'll need to analyze your skin tone. Would you like to upload a photo?"
+            
+        elif any(word in message_lower for word in ['foundation', 'concealer']):
+            tools_used.append("ProductSearch")
+            response_text = "Finding the right foundation shade is important! To match your exact skin tone, please upload a selfie and I'll recommend the best options for you."
+            
+        elif any(word in message_lower for word in ['cart', 'checkout', 'buy', 'order']):
+            tools_used.append("ACP_GetCart")
+            response_text = "I can help you with your cart! Currently, your cart is empty. Would you like me to recommend some products first?"
+            
+        elif any(word in message_lower for word in ['recommend', 'suggest', 'find']):
+            response_text = "I'd be happy to make personalized recommendations! Please upload a photo of your face so I can analyze your skin tone and suggest the best products for you."
+            
+        else:
+            response_text = "I can help you with:\n- 📸 Skin tone analysis (upload a selfie)\n- 💄 Product recommendations\n- 🛒 Shopping and checkout\n\nWhat would you like to do?"
+    
+    # Store assistant response
+    _chat_sessions[session_id].append({
+        "role": "assistant",
+        "content": response_text
+    })
+    
+    return ChatResponse(
+        response=response_text,
+        session_id=session_id,
+        tools_used=tools_used if tools_used else None,
+        analysis_result=analysis_result,
+        products=products,
+        cart_update=None
+    )
+
+# ============================================================================
+# CONFIG ENDPOINT - For Admin Panel
+# ============================================================================
+
+@app.get("/api/config")
+async def get_config():
+    """Get current widget configuration."""
+    global _widget_config
+    if _widget_config is None:
+        _widget_config = {
+            "retailer_name": "Beauty Store",
+            "tagline": "Commerce Assistant",
+            "logo_url": None,
+            "theme": {
+                "primary_color": "#000000",
+                "secondary_color": "#E60023",
+                "background_color": "#FFFFFF",
+                "text_color": "#333333",
+                "accent_color": "#C9A050",
+                "border_radius": "12px",
+                "font_family": "'Helvetica Neue', Arial, sans-serif"
+            },
+            "widget": {
+                "position": "bottom-right",
+                "button_text": "Chat with Us",
+                "button_icon": "💄",
+                "width": "380px",
+                "height": "600px"
+            },
+            "messages": {
+                "welcome": "Hi! I'm your Commerce Assistant. How can I help you today?",
+                "identity_prompt": "Is this you, {name}?",
+                "analysis_complete": "✨ Your Beauty Profile"
+            }
+        }
+    return _widget_config
+
+@app.put("/api/config")
+async def update_config(config: Dict[str, Any]):
+    """Update widget configuration."""
+    global _widget_config
+    if _widget_config is None:
+        _widget_config = {}
+    
+    # Deep merge
+    def merge(base, updates):
+        for key, value in updates.items():
+            if isinstance(value, dict) and key in base and isinstance(base[key], dict):
+                merge(base[key], value)
+            else:
+                base[key] = value
+    
+    merge(_widget_config, config)
+    return _widget_config
+
+# ============================================================================
+# STATIC FILES - Serve React Frontend
+# ============================================================================
+
+# Serve static files from /static directory
+STATIC_DIR = Path(__file__).parent.parent / "static"
 
 @app.on_event("startup")
 async def startup_event():
     """Initialize on startup."""
     logger.info("🚀 Agent Commerce Backend starting...")
     logger.info(f"📁 Working directory: {os.getcwd()}")
+    
+    # Mount static files if directory exists
+    if STATIC_DIR.exists():
+        app.mount("/assets", StaticFiles(directory=STATIC_DIR / "assets"), name="assets")
+        logger.info(f"📦 Static files mounted from {STATIC_DIR}")
+    else:
+        logger.warning(f"⚠️ Static directory not found: {STATIC_DIR}")
+
+# Catch-all route for SPA - must be last
+@app.get("/{full_path:path}")
+async def serve_spa(full_path: str):
+    """Serve the React SPA for all non-API routes."""
+    # Skip API routes
+    if full_path.startswith("api/"):
+        raise HTTPException(status_code=404, detail="API endpoint not found")
+    
+    # Try to serve static file
+    static_file = STATIC_DIR / full_path
+    if static_file.exists() and static_file.is_file():
+        return FileResponse(static_file)
+    
+    # Serve index.html for SPA routing
+    index_file = STATIC_DIR / "index.html"
+    if index_file.exists():
+        return FileResponse(index_file)
+    
+    # Fallback response if no static files
+    return JSONResponse({
+        "message": "Agent Commerce Backend",
+        "docs": "/docs",
+        "health": "/health"
+    })
 
 if __name__ == "__main__":
     import uvicorn

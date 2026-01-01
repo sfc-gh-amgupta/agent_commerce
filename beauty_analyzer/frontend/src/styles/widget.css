@@ -1,0 +1,476 @@
+/* =============================================================================
+   Agent Commerce - Widget Styles
+   ============================================================================= */
+
+/* CSS Variables - Set by theme config */
+:root {
+  --widget-primary: #000000;
+  --widget-secondary: #E60023;
+  --widget-background: #FFFFFF;
+  --widget-text: #333333;
+  --widget-accent: #C9A050;
+  --widget-radius: 12px;
+  --widget-font: 'Helvetica Neue', Arial, sans-serif;
+  --widget-width: 380px;
+  --widget-height: 600px;
+}
+
+/* =============================================================================
+   Widget Button (Collapsed State)
+   ============================================================================= */
+
+.widget-button {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: 60px;
+  height: 60px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, var(--widget-primary) 0%, var(--widget-secondary) 100%);
+  border: none;
+  cursor: pointer;
+  box-shadow: 0 4px 20px rgba(0, 0, 0, 0.25);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 28px;
+  transition: transform 0.3s ease, box-shadow 0.3s ease;
+  z-index: 9999;
+}
+
+.widget-button:hover {
+  transform: scale(1.1);
+  box-shadow: 0 6px 28px rgba(0, 0, 0, 0.35);
+}
+
+.widget-button.left {
+  right: auto;
+  left: 24px;
+}
+
+/* =============================================================================
+   Widget Container (Expanded State)
+   ============================================================================= */
+
+.widget-container {
+  position: fixed;
+  bottom: 24px;
+  right: 24px;
+  width: var(--widget-width);
+  height: var(--widget-height);
+  max-height: calc(100vh - 48px);
+  background: var(--widget-background);
+  border-radius: var(--widget-radius);
+  box-shadow: 0 8px 40px rgba(0, 0, 0, 0.2);
+  display: flex;
+  flex-direction: column;
+  overflow: hidden;
+  font-family: var(--widget-font);
+  z-index: 9999;
+  animation: slideUp 0.3s ease;
+}
+
+.widget-container.left {
+  right: auto;
+  left: 24px;
+}
+
+@keyframes slideUp {
+  from {
+    opacity: 0;
+    transform: translateY(20px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+/* =============================================================================
+   Header
+   ============================================================================= */
+
+.widget-header {
+  background: linear-gradient(135deg, var(--widget-primary) 0%, var(--widget-secondary) 100%);
+  color: white;
+  padding: 16px 20px;
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  flex-shrink: 0;
+}
+
+.widget-header-logo {
+  width: 40px;
+  height: 40px;
+  border-radius: 8px;
+  object-fit: contain;
+  background: white;
+  padding: 4px;
+}
+
+.widget-header-info {
+  flex: 1;
+}
+
+.widget-header-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+}
+
+.widget-header-subtitle {
+  font-size: 12px;
+  opacity: 0.9;
+  margin: 0;
+}
+
+.widget-close-btn {
+  background: rgba(255, 255, 255, 0.2);
+  border: none;
+  color: white;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 18px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: background 0.2s;
+}
+
+.widget-close-btn:hover {
+  background: rgba(255, 255, 255, 0.3);
+}
+
+/* =============================================================================
+   Chat Area
+   ============================================================================= */
+
+.widget-chat {
+  flex: 1;
+  overflow-y: auto;
+  padding: 16px;
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  background: #f8f9fa;
+}
+
+/* Message Bubbles */
+.message {
+  max-width: 85%;
+  padding: 12px 16px;
+  border-radius: 16px;
+  line-height: 1.5;
+  font-size: 14px;
+  animation: fadeIn 0.2s ease;
+}
+
+@keyframes fadeIn {
+  from { opacity: 0; transform: translateY(8px); }
+  to { opacity: 1; transform: translateY(0); }
+}
+
+.message.user {
+  background: var(--widget-primary);
+  color: white;
+  align-self: flex-end;
+  border-bottom-right-radius: 4px;
+}
+
+.message.assistant {
+  background: white;
+  color: var(--widget-text);
+  align-self: flex-start;
+  border-bottom-left-radius: 4px;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+/* Typing Indicator */
+.typing-indicator {
+  display: flex;
+  gap: 4px;
+  padding: 12px 16px;
+  background: white;
+  border-radius: 16px;
+  align-self: flex-start;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.typing-indicator span {
+  width: 8px;
+  height: 8px;
+  background: var(--widget-primary);
+  border-radius: 50%;
+  animation: bounce 1.4s infinite ease-in-out;
+}
+
+.typing-indicator span:nth-child(1) { animation-delay: -0.32s; }
+.typing-indicator span:nth-child(2) { animation-delay: -0.16s; }
+
+@keyframes bounce {
+  0%, 80%, 100% { transform: scale(0); }
+  40% { transform: scale(1); }
+}
+
+/* =============================================================================
+   Quick Actions
+   ============================================================================= */
+
+.widget-actions {
+  padding: 8px 16px;
+  display: flex;
+  gap: 8px;
+  background: var(--widget-background);
+  border-top: 1px solid #e9ecef;
+}
+
+.action-btn {
+  flex: 1;
+  padding: 10px 12px;
+  border: 1px solid var(--widget-primary);
+  background: transparent;
+  color: var(--widget-primary);
+  border-radius: 8px;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 500;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  transition: all 0.2s;
+}
+
+.action-btn:hover {
+  background: var(--widget-primary);
+  color: white;
+}
+
+/* =============================================================================
+   Input Area (ALWAYS VISIBLE)
+   ============================================================================= */
+
+.widget-input {
+  padding: 12px 16px;
+  background: var(--widget-background);
+  border-top: 1px solid #e9ecef;
+  display: flex;
+  gap: 8px;
+  align-items: flex-end;
+}
+
+.widget-input-field {
+  flex: 1;
+  padding: 12px 16px;
+  border: 1px solid #e0e0e0;
+  border-radius: 24px;
+  font-size: 14px;
+  font-family: inherit;
+  outline: none;
+  transition: border-color 0.2s;
+  resize: none;
+  max-height: 100px;
+  min-height: 44px;
+}
+
+.widget-input-field:focus {
+  border-color: var(--widget-primary);
+}
+
+.widget-input-field::placeholder {
+  color: #999;
+}
+
+.send-btn {
+  width: 44px;
+  height: 44px;
+  border-radius: 50%;
+  border: none;
+  background: var(--widget-primary);
+  color: white;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 18px;
+  transition: transform 0.2s, background 0.2s;
+  flex-shrink: 0;
+}
+
+.send-btn:hover {
+  transform: scale(1.05);
+  background: var(--widget-secondary);
+}
+
+.send-btn:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+  transform: none;
+}
+
+/* =============================================================================
+   Analysis Result Card
+   ============================================================================= */
+
+.analysis-card {
+  background: white;
+  border-radius: 12px;
+  padding: 16px;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.1);
+  margin: 8px 0;
+}
+
+.analysis-card-title {
+  font-size: 16px;
+  font-weight: 600;
+  margin-bottom: 16px;
+  display: flex;
+  align-items: center;
+  gap: 8px;
+}
+
+.analysis-grid {
+  display: grid;
+  grid-template-columns: repeat(3, 1fr);
+  gap: 12px;
+}
+
+.analysis-item {
+  text-align: center;
+  padding: 12px 8px;
+  background: #f8f9fa;
+  border-radius: 8px;
+}
+
+.analysis-item-label {
+  font-size: 10px;
+  text-transform: uppercase;
+  color: #666;
+  margin-bottom: 8px;
+}
+
+.color-swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 50%;
+  margin: 0 auto 8px;
+  border: 3px solid white;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.15);
+}
+
+.analysis-item-value {
+  font-size: 13px;
+  font-weight: 500;
+  color: var(--widget-text);
+}
+
+.analysis-item-detail {
+  font-size: 11px;
+  color: #666;
+  margin-top: 4px;
+}
+
+.analysis-warning {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 12px;
+  background: #fff3cd;
+  border-radius: 8px;
+  margin-top: 12px;
+  font-size: 13px;
+  color: #856404;
+}
+
+/* =============================================================================
+   Product Card
+   ============================================================================= */
+
+.product-card {
+  background: white;
+  border-radius: 12px;
+  padding: 12px;
+  display: flex;
+  gap: 12px;
+  box-shadow: 0 1px 4px rgba(0, 0, 0, 0.08);
+  margin: 4px 0;
+}
+
+.product-swatch {
+  width: 48px;
+  height: 48px;
+  border-radius: 8px;
+  flex-shrink: 0;
+}
+
+.product-info {
+  flex: 1;
+  min-width: 0;
+}
+
+.product-name {
+  font-size: 14px;
+  font-weight: 500;
+  margin-bottom: 2px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.product-brand {
+  font-size: 12px;
+  color: #666;
+  margin-bottom: 4px;
+}
+
+.product-price {
+  font-size: 14px;
+  font-weight: 600;
+  color: var(--widget-primary);
+}
+
+.product-match {
+  font-size: 11px;
+  color: #28a745;
+}
+
+.add-to-cart-btn {
+  padding: 8px 16px;
+  background: var(--widget-accent);
+  color: white;
+  border: none;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  font-weight: 500;
+  align-self: center;
+  transition: transform 0.2s;
+}
+
+.add-to-cart-btn:hover {
+  transform: scale(1.05);
+}
+
+/* =============================================================================
+   Responsive
+   ============================================================================= */
+
+@media (max-width: 480px) {
+  .widget-container {
+    width: calc(100vw - 16px);
+    height: calc(100vh - 16px);
+    bottom: 8px;
+    right: 8px;
+    left: 8px;
+    border-radius: 16px;
+  }
+  
+  .widget-button {
+    bottom: 16px;
+    right: 16px;
+  }
+}
+
