@@ -1,0 +1,185 @@
+<mxfile host="app.diagrams.net" modified="2024-12-01T00:00:00.000Z" agent="draw.io" version="22.0.0">
+  <diagram name="Conversation Flow" id="conversation-flow">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- Title -->
+        <mxCell id="title" value="Conversation Flow - State Machine" style="text;html=1;strokeColor=none;fillColor=none;align=center;verticalAlign=middle;whiteSpace=wrap;rounded=0;fontStyle=1;fontSize=16;" vertex="1" parent="1">
+          <mxGeometry x="400" y="10" width="300" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- START -->
+        <mxCell id="start" value="START" style="ellipse;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="500" y="50" width="80" height="40" as="geometry"/>
+        </mxCell>
+        
+        <!-- WELCOME -->
+        <mxCell id="welcome" value="WELCOME" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="490" y="120" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-start-welcome" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="start" target="welcome">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Input Options Row -->
+        <mxCell id="take-selfie" value="Take Selfie" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="280" y="200" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="upload-photo" value="Upload Photo" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="490" y="200" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="text-chat" value="Text Chat" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="700" y="200" width="100" height="40" as="geometry"/>
+        </mxCell>
+        
+        <!-- Arrows from Welcome -->
+        <mxCell id="arr-welcome-selfie" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="welcome" target="take-selfie">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-welcome-upload" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="welcome" target="upload-photo">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-welcome-text" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="welcome" target="text-chat">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Face Analysis -->
+        <mxCell id="face-analysis" value="Face Analysis" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="380" y="280" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-selfie-analysis" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="take-selfie" target="face-analysis">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-upload-analysis" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="upload-photo" target="face-analysis">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Agent Response (for text chat) -->
+        <mxCell id="agent-response" value="Agent Response" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="700" y="280" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-text-response" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="text-chat" target="agent-response">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Identity Check -->
+        <mxCell id="identity-check" value="Identity Check" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="380" y="360" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-analysis-identity" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="face-analysis" target="identity-check">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Match Decision Diamond -->
+        <mxCell id="match-decision" value="Match?" style="rhombus;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;" vertex="1" parent="1">
+          <mxGeometry x="380" y="440" width="100" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-identity-decision" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="identity-check" target="match-decision">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Is this you Sarah? -->
+        <mxCell id="confirm-identity" value="&quot;Is this you&#xa;Sarah?&quot;" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="240" y="440" width="100" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-match-yes" value="Yes" style="endArrow=classic;html=1;" edge="1" parent="1" source="match-decision" target="confirm-identity">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- New Customer -->
+        <mxCell id="new-customer" value="New Customer&#xa;Flow" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="520" y="440" width="100" height="60" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-match-no" value="No" style="endArrow=classic;html=1;" edge="1" parent="1" source="match-decision" target="new-customer">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Yes/No from confirm -->
+        <mxCell id="login" value="Login" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="180" y="540" width="80" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-confirm-yes" value="Yes" style="endArrow=classic;html=1;" edge="1" parent="1" source="confirm-identity" target="login">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-confirm-no" value="No" style="endArrow=classic;html=1;dashed=1;" edge="1" parent="1" source="confirm-identity" target="new-customer">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Show Analysis Results -->
+        <mxCell id="analysis-results" value="Show Analysis&#xa;Results" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="380" y="600" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-login-results" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="login" target="analysis-results">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-new-results" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="new-customer" target="analysis-results">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-agent-results" value="" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="agent-response" target="analysis-results">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Category Select -->
+        <mxCell id="category-select" value="Category&#xa;Select" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;" vertex="1" parent="1">
+          <mxGeometry x="380" y="690" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-results-category" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="analysis-results" target="category-select">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Product Matching -->
+        <mxCell id="product-matching" value="Product&#xa;Matching" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;" vertex="1" parent="1">
+          <mxGeometry x="520" y="690" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-category-matching" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="category-select" target="product-matching">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Show Products -->
+        <mxCell id="show-products" value="Show&#xa;Products" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;" vertex="1" parent="1">
+          <mxGeometry x="660" y="690" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-matching-products" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="product-matching" target="show-products">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Try Another loop -->
+        <mxCell id="arr-try-another" value="Try Another" style="endArrow=classic;html=1;curved=1;" edge="1" parent="1" source="show-products" target="category-select">
+          <mxGeometry width="50" height="50" relative="1" as="geometry">
+            <Array as="points">
+              <mxPoint x="710" y="780"/>
+              <mxPoint x="430" y="780"/>
+            </Array>
+          </mxGeometry>
+        </mxCell>
+        
+        <!-- Add to Cart -->
+        <mxCell id="add-to-cart" value="Add to Cart" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;" vertex="1" parent="1">
+          <mxGeometry x="800" y="690" width="100" height="50" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-products-cart" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="show-products" target="add-to-cart">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Checkout -->
+        <mxCell id="checkout" value="CHECKOUT" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="800" y="780" width="100" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-cart-checkout" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="add-to-cart" target="checkout">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- END -->
+        <mxCell id="end" value="END" style="ellipse;whiteSpace=wrap;html=1;fillColor=#f8cecc;strokeColor=#b85450;fontStyle=1;" vertex="1" parent="1">
+          <mxGeometry x="940" y="780" width="60" height="40" as="geometry"/>
+        </mxCell>
+        <mxCell id="arr-checkout-end" value="" style="endArrow=classic;html=1;" edge="1" parent="1" source="checkout" target="end">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+

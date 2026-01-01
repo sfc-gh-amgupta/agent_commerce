@@ -1,0 +1,32 @@
+# Agent Commerce Backend - Requirements
+# =====================================
+
+# Web framework
+fastapi==0.109.0
+uvicorn[standard]==0.27.0
+python-multipart==0.0.6
+
+# Image processing
+Pillow==10.2.0
+numpy==1.26.3
+opencv-python-headless==4.9.0.80
+
+# Face recognition (dlib-based)
+# Note: dlib requires cmake and C++ compiler
+face-recognition==1.3.0
+dlib==19.24.2
+
+# MediaPipe for face mesh and landmarks
+mediapipe==0.10.9
+
+# Color science
+colormath==3.0.0
+
+# Utilities
+pydantic==2.5.3
+python-jose==3.3.0
+requests==2.31.0
+
+# Snowflake connector (for direct DB access if needed)
+snowflake-connector-python==3.6.0
+

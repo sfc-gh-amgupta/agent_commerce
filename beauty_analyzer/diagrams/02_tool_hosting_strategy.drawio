@@ -1,0 +1,112 @@
+<mxfile host="app.diagrams.net" modified="2024-12-01T00:00:00.000Z" agent="draw.io" version="22.0.0">
+  <diagram name="Tool Hosting Strategy" id="tool-hosting">
+    <mxGraphModel dx="1434" dy="780" grid="1" gridSize="10" guides="1" tooltips="1" connect="1" arrows="1" fold="1" page="1" pageScale="1" pageWidth="1100" pageHeight="850" math="0" shadow="0">
+      <root>
+        <mxCell id="0"/>
+        <mxCell id="1" parent="0"/>
+        
+        <!-- CORTEX AGENT (Center Top) -->
+        <mxCell id="cortex-agent" value="CORTEX AGENT&#xa;(Orchestrator)" style="rounded=1;whiteSpace=wrap;html=1;fillColor=#d5e8d4;strokeColor=#82b366;fontStyle=1;fontSize=14;" vertex="1" parent="1">
+          <mxGeometry x="440" y="40" width="180" height="60" as="geometry"/>
+        </mxCell>
+        
+        <!-- Row 1: SPCS, Vector Search, Cortex Search -->
+        <mxCell id="spcs" value="SPCS CONTAINER" style="swimlane;whiteSpace=wrap;html=1;fillColor=#e1d5e7;strokeColor=#9673a6;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="80" y="160" width="200" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="spcs-tool1" value="• analyze_face" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="spcs">
+          <mxGeometry x="10" y="40" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="spcs-tool2" value="• detect_makeup" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="spcs">
+          <mxGeometry x="10" y="70" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="spcs-tool3" value="• match_products" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="spcs">
+          <mxGeometry x="10" y="100" width="180" height="30" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="vector-search" value="CORTEX VECTOR SEARCH" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="320" y="160" width="200" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="vs-tool1" value="• identify_customer&#xa;  (ANN lookup)" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="vector-search">
+          <mxGeometry x="10" y="50" width="180" height="50" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="cortex-search" value="CORTEX SEARCH" style="swimlane;whiteSpace=wrap;html=1;fillColor=#dae8fc;strokeColor=#6c8ebf;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="560" y="160" width="200" height="160" as="geometry"/>
+        </mxCell>
+        <mxCell id="cs-tool1" value="• search_products" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-search">
+          <mxGeometry x="10" y="40" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="cs-tool2" value="• search_labels" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-search">
+          <mxGeometry x="10" y="70" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="cs-tool3" value="• search_social" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-search">
+          <mxGeometry x="10" y="100" width="180" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- Row 2: Cortex Analyst, SQL/Python UDFs, AI_EXTRACT -->
+        <mxCell id="cortex-analyst" value="CORTEX ANALYST" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="80" y="360" width="200" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="ca-tool1" value="• query_products" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-analyst">
+          <mxGeometry x="10" y="40" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="ca-tool2" value="• query_inventory" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-analyst">
+          <mxGeometry x="10" y="65" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="ca-tool3" value="• query_customer" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-analyst">
+          <mxGeometry x="10" y="90" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="ca-tool4" value="• query_social" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="cortex-analyst">
+          <mxGeometry x="10" y="115" width="180" height="25" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="sql-udfs" value="SQL/PYTHON UDFs" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="320" y="360" width="200" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="udf-tool1" value="• calculate_ciede" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="sql-udfs">
+          <mxGeometry x="10" y="40" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="udf-tool2" value="• checkout_tools" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="sql-udfs">
+          <mxGeometry x="10" y="65" width="180" height="25" as="geometry"/>
+        </mxCell>
+        <mxCell id="udf-tool3" value="• redeem_points" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="sql-udfs">
+          <mxGeometry x="10" y="90" width="180" height="25" as="geometry"/>
+        </mxCell>
+        
+        <mxCell id="ai-extract" value="AI_EXTRACT" style="swimlane;whiteSpace=wrap;html=1;fillColor=#fff2cc;strokeColor=#d6b656;startSize=30;" vertex="1" parent="1">
+          <mxGeometry x="560" y="360" width="200" height="180" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae-tool1" value="• Label processing" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="ai-extract">
+          <mxGeometry x="10" y="50" width="180" height="30" as="geometry"/>
+        </mxCell>
+        <mxCell id="ae-tool2" value="• Ingredient extract" style="text;html=1;strokeColor=none;fillColor=none;align=left;verticalAlign=middle;whiteSpace=wrap;rounded=0;" vertex="1" parent="ai-extract">
+          <mxGeometry x="10" y="80" width="180" height="30" as="geometry"/>
+        </mxCell>
+        
+        <!-- Connection arrows from Cortex Agent -->
+        <mxCell id="arrow-to-spcs" value="" style="endArrow=classic;html=1;exitX=0.25;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="cortex-agent" target="spcs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-to-vs" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;" edge="1" parent="1" source="cortex-agent" target="vector-search">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-to-cs" value="" style="endArrow=classic;html=1;exitX=0.75;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;curved=1;" edge="1" parent="1" source="cortex-agent" target="cortex-search">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        
+        <!-- Vertical connections -->
+        <mxCell id="arrow-spcs-analyst" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="spcs" target="cortex-analyst">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-vs-udf" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="vector-search" target="sql-udfs">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+        <mxCell id="arrow-cs-ae" value="" style="endArrow=classic;html=1;exitX=0.5;exitY=1;exitDx=0;exitDy=0;entryX=0.5;entryY=0;entryDx=0;entryDy=0;dashed=1;" edge="1" parent="1" source="cortex-search" target="ai-extract">
+          <mxGeometry width="50" height="50" relative="1" as="geometry"/>
+        </mxCell>
+      </root>
+    </mxGraphModel>
+  </diagram>
+</mxfile>
+
