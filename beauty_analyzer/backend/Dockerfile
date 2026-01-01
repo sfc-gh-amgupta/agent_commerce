@@ -1,33 +1,10 @@
 # ============================================================================
-# Agent Commerce - Full Stack Dockerfile
+# Agent Commerce - Backend + Frontend Dockerfile
 # ============================================================================
-# Multi-stage build:
-#   Stage 1: Build React frontend
-#   Stage 2: Build Python backend with dlib
+# Expects frontend to be pre-built and copied to ./static/ before build
+# Use deploy.sh which handles the frontend build automatically
 # ============================================================================
 
-# =============================================================================
-# Stage 1: Build Frontend
-# =============================================================================
-FROM node:20-slim AS frontend-builder
-
-WORKDIR /frontend
-
-# Copy package files
-COPY ../frontend/package*.json ./
-
-# Install dependencies
-RUN npm ci
-
-# Copy source code
-COPY ../frontend/ ./
-
-# Build production bundle
-RUN npm run build
-
-# =============================================================================
-# Stage 2: Python Backend
-# =============================================================================
 FROM python:3.9-slim-bullseye
 
 # Install system dependencies
@@ -67,8 +44,8 @@ RUN pip install --no-cache-dir -r requirements-final.txt
 # Copy application code
 COPY app/ ./app/
 
-# Copy frontend build from Stage 1
-COPY --from=frontend-builder /frontend/dist ./static/
+# Copy pre-built frontend (built by deploy.sh)
+COPY static/ ./static/
 
 # Create non-root user for security
 RUN useradd --create-home --shell /bin/bash appuser && \
