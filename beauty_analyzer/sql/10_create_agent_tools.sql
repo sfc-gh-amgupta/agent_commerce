@@ -8,7 +8,7 @@
 -- ┌─────────────────────────────────────────┬─────────────┬──────────────────────────────┐
 -- │ Tool                                    │ Type        │ Purpose                      │
 -- ├─────────────────────────────────────────┼─────────────┼──────────────────────────────┤
--- │ UTIL.TOOL_ANALYZE_FACE                  │ Python UDF  │ Face/skin analysis via SPCS  │
+-- │ CUSTOMERS.TOOL_ANALYZE_FACE             │ Python UDF  │ Face/skin analysis via SPCS  │
 -- │ CUSTOMERS.TOOL_IDENTIFY_CUSTOMER        │ SQL UDTF    │ Face matching (Vector Search)│
 -- │ PRODUCTS.TOOL_MATCH_PRODUCTS            │ SQL UDTF    │ Color matching (CIEDE2000)   │
 -- │ CART_OLTP.TOOL_CREATE_CART_SESSION      │ Procedure   │ Create cart session          │
@@ -49,9 +49,9 @@ USE WAREHOUSE AGENT_COMMERCE_WH;
 --   2. If calling from outside SPCS, you need EXTERNAL ACCESS INTEGRATION
 --   3. Inside SPCS network, services communicate via internal DNS
 -- ----------------------------------------------------------------------------
-USE SCHEMA UTIL;
+USE SCHEMA CUSTOMERS;
 
-CREATE OR REPLACE FUNCTION UTIL.TOOL_ANALYZE_FACE(image_base64 VARCHAR)
+CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(image_base64 VARCHAR)
 RETURNS VARIANT
 LANGUAGE PYTHON
 RUNTIME_VERSION = '3.10'
@@ -113,7 +113,7 @@ def analyze_face(image_base64):
         }
 $$;
 
-COMMENT ON FUNCTION UTIL.TOOL_ANALYZE_FACE(VARCHAR) IS 
+COMMENT ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) IS 
 'Analyze face from uploaded image (base64). Returns embedding (128-dim), skin tone (hex, RGB, LAB), lip color, Fitzpatrick type (1-6), Monk shade (1-10), and undertone (warm/cool/neutral). Requires SPCS backend.';
 
 -- ----------------------------------------------------------------------------
@@ -660,7 +660,7 @@ SELECT '✅ Agent Tools Created Successfully!' AS status;
 
 -- List all tools created
 SELECT 
-    'UTIL.TOOL_ANALYZE_FACE' AS tool_name, 
+    'CUSTOMERS.TOOL_ANALYZE_FACE' AS tool_name, 
     'Python UDF' AS tool_type, 
     'Face/skin analysis via SPCS' AS purpose
 UNION ALL SELECT 'CUSTOMERS.TOOL_IDENTIFY_CUSTOMER', 'SQL UDTF', 'Face matching (Vector Search)'

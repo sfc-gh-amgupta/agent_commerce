@@ -19,7 +19,7 @@
 -- │ CheckoutAnalyst         │ cortex_analyst          │ CART_OLTP.CART_SEMANTIC_VIEW                   │
 -- │ ProductSearch           │ cortex_search           │ PRODUCTS.PRODUCT_SEARCH_SERVICE                │
 -- │ SocialSearch            │ cortex_search           │ SOCIAL.SOCIAL_SEARCH_SERVICE                   │
--- │ AnalyzeFace             │ generic (function)      │ UTIL.TOOL_ANALYZE_FACE                         │
+-- │ AnalyzeFace             │ generic (function)      │ CUSTOMERS.TOOL_ANALYZE_FACE                    │
 -- │ IdentifyCustomer        │ generic (function)      │ CUSTOMERS.TOOL_IDENTIFY_CUSTOMER               │
 -- │ MatchProducts           │ generic (function)      │ PRODUCTS.TOOL_MATCH_PRODUCTS                   │
 -- │ CreateCartSession       │ generic (procedure)     │ CART_OLTP.TOOL_CREATE_CART_SESSION             │
@@ -407,7 +407,7 @@ CREATE OR REPLACE AGENT UTIL.BEAUTY_ADVISOR_AGENT
         type: warehouse
         warehouse: AGENT_COMMERCE_WH
         query_timeout: 60
-      identifier: AGENT_COMMERCE.UTIL.TOOL_ANALYZE_FACE
+      identifier: AGENT_COMMERCE.CUSTOMERS.TOOL_ANALYZE_FACE
     
     IdentifyCustomer:
       type: function
