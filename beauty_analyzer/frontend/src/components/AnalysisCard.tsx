@@ -2,7 +2,7 @@
 // Agent Commerce - Analysis Result Card Component
 // =============================================================================
 
-import { AnalysisResult } from '../types';
+import type { AnalysisResult } from '../types';
 
 interface AnalysisCardProps {
   result: AnalysisResult;

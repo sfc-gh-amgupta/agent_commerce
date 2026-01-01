@@ -2,7 +2,7 @@
 // Agent Commerce - Product Card Component
 // =============================================================================
 
-import { ProductMatch } from '../types';
+import type { ProductMatch } from '../types';
 
 interface ProductCardProps {
   product: ProductMatch;

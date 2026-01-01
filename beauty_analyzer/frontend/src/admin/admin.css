@@ -138,7 +138,7 @@
 
 .preset-grid {
   display: grid;
-  grid-template-columns: repeat(4, 1fr);
+  grid-template-columns: repeat(3, 1fr);
   gap: 12px;
 }
 
@@ -291,6 +291,59 @@
 
 .reset-btn:hover {
   background: rgba(239, 68, 68, 0.3);
+}
+
+/* =============================================================================
+   Back to Demo Button
+   ============================================================================= */
+
+.back-to-demo-btn {
+  padding: 10px 20px;
+  background: rgba(99, 102, 241, 0.2);
+  border: 1px solid rgba(99, 102, 241, 0.5);
+  border-radius: 8px;
+  color: #a5b4fc;
+  font-size: 14px;
+  font-weight: 500;
+  text-decoration: none;
+  transition: background 0.2s;
+}
+
+.back-to-demo-btn:hover {
+  background: rgba(99, 102, 241, 0.3);
+  color: #c7d2fe;
+}
+
+/* =============================================================================
+   Industry Preset Buttons
+   ============================================================================= */
+
+.industry-btn {
+  padding: 20px 16px;
+  background: rgba(255, 255, 255, 0.05);
+  border: 2px solid rgba(255, 255, 255, 0.1);
+  border-radius: 12px;
+  color: #fff;
+  cursor: pointer;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 8px;
+  transition: all 0.2s;
+}
+
+.industry-btn:hover {
+  background: rgba(255, 255, 255, 0.1);
+  border-color: rgba(255, 255, 255, 0.2);
+}
+
+.industry-btn.active {
+  background: rgba(99, 102, 241, 0.2);
+  border-color: #6366f1;
+}
+
+.industry-icon {
+  font-size: 32px;
 }
 
 /* =============================================================================

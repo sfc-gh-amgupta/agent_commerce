@@ -3,7 +3,8 @@
 // =============================================================================
 
 import { useState, useRef, useEffect } from 'react';
-import { Message, WidgetConfig, AnalysisResult, DEFAULT_CONFIG } from '../types';
+import type { Message, WidgetConfig } from '../types';
+import { DEFAULT_CONFIG } from '../types';
 import { sendMessage, fileToBase64 } from '../services/api';
 import { AnalysisCard } from './AnalysisCard';
 import { ProductCard } from './ProductCard';

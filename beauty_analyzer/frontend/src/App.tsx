@@ -6,7 +6,8 @@ import { useState, useEffect } from 'react';
 import { ChatWidget } from './components/ChatWidget';
 import { WidgetButton } from './components/WidgetButton';
 import { AdminPanel } from './admin/AdminPanel';
-import { WidgetConfig, DEFAULT_CONFIG } from './types';
+import type { WidgetConfig } from './types';
+import { DEFAULT_CONFIG } from './types';
 import './styles/widget.css';
 
 function App() {
@@ -19,10 +20,10 @@ function App() {
     const path = window.location.pathname;
     if (path === '/admin') {
       setMode('admin');
-    } else if (path === '/' && !window.location.search.includes('demo')) {
+    } else if (path === '/widget') {
       setMode('widget');
     } else {
-      setMode('demo');
+      setMode('demo');  // Default to demo at /
     }
   }, []);
 
@@ -95,7 +96,10 @@ function App() {
 
   // Demo mode - mock retailer website with embedded widget
   return (
-    <div style={demoStyles.page}>
+    <div style={{
+      ...demoStyles.page,
+      background: `linear-gradient(180deg, ${config.theme.background_color} 0%, ${config.theme.accent_color}15 100%)`,
+    }}>
       {/* Demo Header */}
       <header style={demoStyles.header}>
         <div style={demoStyles.headerContent}>
@@ -103,7 +107,17 @@ function App() {
             {config.logo_url ? (
               <img src={config.logo_url} alt="Logo" style={{ height: '32px' }} />
             ) : (
-              <span style={{ fontSize: '24px' }}>💄</span>
+              <span style={{ 
+                fontSize: '20px', 
+                width: '36px', 
+                height: '36px', 
+                background: `linear-gradient(135deg, ${config.theme.primary_color} 0%, ${config.theme.secondary_color} 100%)`,
+                borderRadius: '8px',
+                display: 'flex',
+                alignItems: 'center',
+                justifyContent: 'center',
+                color: '#fff',
+              }}>🛍️</span>
             )}
             <span style={demoStyles.logoText}>{config.retailer_name}</span>
           </div>
@@ -111,7 +125,7 @@ function App() {
             <a href="#" style={demoStyles.navLink}>Shop</a>
             <a href="#" style={demoStyles.navLink}>New</a>
             <a href="#" style={demoStyles.navLink}>Brands</a>
-            <a href="/admin" style={demoStyles.navLink}>Admin</a>
+            <a href="/admin" style={{...demoStyles.navLink, color: config.theme.secondary_color, fontWeight: 600}}>⚙️ Admin</a>
           </nav>
         </div>
       </header>
@@ -120,49 +134,45 @@ function App() {
       <section style={demoStyles.hero}>
         <div style={demoStyles.heroContent}>
           <h1 style={demoStyles.heroTitle}>
-            Find Your Perfect Shade
+            {config.demo?.hero_title || 'Find Your Perfect Match'}
           </h1>
           <p style={demoStyles.heroSubtitle}>
-            Our AI-powered beauty advisor analyzes your skin tone to recommend 
-            products that complement you perfectly.
+            {config.demo?.hero_subtitle || 'Our AI-powered assistant helps you discover exactly what you need.'}
           </p>
           <button 
-            style={demoStyles.heroCta}
+            style={{
+              ...demoStyles.heroCta,
+              background: `linear-gradient(135deg, ${config.theme.primary_color} 0%, ${config.theme.secondary_color} 100%)`,
+            }}
             onClick={() => setIsOpen(true)}
           >
-            ✨ Try the Beauty Advisor
+            {config.demo?.hero_cta || '✨ Get Started'}
           </button>
         </div>
         <div style={demoStyles.heroImage}>
-          <div style={demoStyles.heroImagePlaceholder}>
-            🌟
+          <div style={{
+            ...demoStyles.heroImagePlaceholder,
+            background: `linear-gradient(135deg, ${config.theme.background_color} 0%, ${config.theme.accent_color}22 100%)`,
+            border: `2px solid ${config.theme.accent_color}44`,
+          }}>
+            ✨
           </div>
         </div>
       </section>
 
       {/* Features */}
       <section style={demoStyles.features}>
-        <div style={demoStyles.feature}>
-          <div style={demoStyles.featureIcon}>📸</div>
-          <h3 style={demoStyles.featureTitle}>Skin Analysis</h3>
-          <p style={demoStyles.featureText}>
-            Upload a selfie and get instant analysis of your skin tone, undertone, and Monk shade.
-          </p>
-        </div>
-        <div style={demoStyles.feature}>
-          <div style={demoStyles.featureIcon}>🎨</div>
-          <h3 style={demoStyles.featureTitle}>Color Matching</h3>
-          <p style={demoStyles.featureText}>
-            Scientific color matching finds products that perfectly complement your unique beauty.
-          </p>
-        </div>
-        <div style={demoStyles.feature}>
-          <div style={demoStyles.featureIcon}>🛒</div>
-          <h3 style={demoStyles.featureTitle}>Easy Checkout</h3>
-          <p style={demoStyles.featureText}>
-            Add products to cart and checkout directly through the chat interface.
-          </p>
-        </div>
+        {(config.demo?.features || [
+          { icon: '🔍', title: 'Smart Search', text: 'Find exactly what you need with AI-powered discovery.' },
+          { icon: '💬', title: 'Chat Assistant', text: 'Get personalized recommendations through natural conversation.' },
+          { icon: '🛒', title: 'Easy Checkout', text: 'Add to cart and checkout seamlessly through the chat.' },
+        ]).map((feature, idx) => (
+          <div key={idx} style={demoStyles.feature}>
+            <div style={demoStyles.featureIcon}>{feature.icon}</div>
+            <h3 style={demoStyles.featureTitle}>{feature.title}</h3>
+            <p style={demoStyles.featureText}>{feature.text}</p>
+          </div>
+        ))}
       </section>
 
       {/* Widget */}

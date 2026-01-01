@@ -2,7 +2,7 @@
 // Agent Commerce - API Service
 // =============================================================================
 
-import { Message, AnalysisResult, WidgetConfig } from '../types';
+import type { AnalysisResult, WidgetConfig } from '../types';
 
 const API_BASE = '/api';
 
