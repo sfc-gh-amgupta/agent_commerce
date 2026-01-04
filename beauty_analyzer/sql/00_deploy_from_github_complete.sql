@@ -301,6 +301,11 @@ CREATE STAGE IF NOT EXISTS CUSTOMERS.FACE_IMAGES_STAGE
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Customer face images for embedding extraction';
 
+-- V2: Stage for widget face uploads (agent-orchestrated analysis)
+CREATE STAGE IF NOT EXISTS CUSTOMERS.FACE_UPLOAD_STAGE
+    DIRECTORY = (ENABLE = TRUE)
+    COMMENT = 'Face images uploaded via widget for TOOL_ANALYZE_FACE';
+
 -- Copy images from Git to internal stages
 -- Hero images
 COPY FILES INTO @PRODUCTS.PRODUCT_MEDIA_STAGE/hero/

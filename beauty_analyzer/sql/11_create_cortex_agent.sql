@@ -67,10 +67,21 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
     orchestration: |
       Tool Selection Guide:
       
-      FACE ANALYSIS & CUSTOMER IDENTIFICATION:
-      - When customer uploads a face image: use AnalyzeFace to get skin tone and embedding
-      - To identify a returning customer: use IdentifyCustomer with the embedding from AnalyzeFace
-        IMPORTANT: Pass the embedding as a JSON string (e.g., "[0.1, 0.2, ...]"), not as an array object
+      FACE IMAGE ANALYSIS FLOW (V2 - Agent-Orchestrated):
+      When the user uploads a face image (message contains a stage path like "@CUSTOMERS.FACE_UPLOAD_STAGE/..."):
+      
+      1. FIRST: Call AnalyzeFace with the stage path to extract:
+         - skin_hex, lip_hex (for color matching)
+         - fitzpatrick_type, monk_shade (for skin classification)
+         - undertone (warm/cool/neutral)
+         - embedding_json (128-dim face vector as JSON string)
+      
+      2. THEN: Call IdentifyCustomer with the embedding_json from AnalyzeFace result
+         - If match found with confidence > 0.45, ask user to confirm identity
+         - IMPORTANT: Pass embedding_json as a string, NOT as an array object
+      
+      3. FINALLY: Call MatchProducts with skin_hex from AnalyzeFace result
+         - Recommend products that match their skin tone
       
       PRODUCT DISCOVERY:
       - Natural language product search: use ProductSearch (e.g., "vegan mascara", "hydrating foundation")
@@ -204,18 +215,19 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
         type: generic
         name: AnalyzeFace
         description: |
-          Analyze a face image to extract skin tone, lip color, undertone, 
-          Fitzpatrick type (1-6), Monk shade (1-10), and 128-dimensional face 
+          Analyze a face image stored in Snowflake Stage. Extracts skin tone, lip color, 
+          undertone, Fitzpatrick type (1-6), Monk shade (1-10), and 128-dimensional face 
           embedding for customer identification. Use when customer uploads a photo.
-          Returns detailed skin analysis for personalized recommendations.
+          Returns: skin_hex, lip_hex, fitzpatrick_type, monk_shade, undertone, embedding_json.
+          The embedding_json can be passed directly to IdentifyCustomer.
         input_schema:
           type: object
           properties:
-            image_base64:
+            stage_path:
               type: string
-              description: Base64 encoded image of the customer's face (JPEG or PNG)
+              description: Path to face image in Snowflake Stage (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/abc123.jpg")
           required:
-            - image_base64
+            - stage_path
     
     - tool_spec:
         type: generic

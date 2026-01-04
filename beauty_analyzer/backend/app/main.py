@@ -300,6 +300,7 @@ async def invoke_cortex_agent_rest(
                 extracted_products = []
                 customer_match = None
                 cart_update = None
+                analysis_result = None  # V2: Will be populated from AnalyzeFace tool result
                 
                 # Helper function to extract product from dict
                 def extract_product(item):
@@ -477,6 +478,41 @@ async def invoke_cortex_agent_rest(
                                 cart_update = json.loads(content)
                             except json.JSONDecodeError:
                                 pass
+                    
+                    # V2: Handle AnalyzeFace tool results (for frontend skin analysis card)
+                    if "analyzeface" in tool_name or "analyze_face" in tool_name:
+                        logger.info(f"🎨 Found AnalyzeFace tool result, content type: {type(content)}")
+                        
+                        face_analysis = None
+                        if isinstance(content, dict):
+                            face_analysis = content
+                        elif isinstance(content, list) and len(content) > 0:
+                            first_item = content[0]
+                            if isinstance(first_item, dict):
+                                if 'json' in first_item:
+                                    face_analysis = first_item.get('json', {})
+                                else:
+                                    face_analysis = first_item
+                        elif isinstance(content, str):
+                            try:
+                                face_analysis = json.loads(content)
+                            except json.JSONDecodeError:
+                                pass
+                        
+                        if face_analysis and face_analysis.get("success"):
+                            # Extract analysis data for frontend display
+                            analysis_result = {
+                                "success": True,
+                                "skin_hex": face_analysis.get("skin_hex"),
+                                "lip_hex": face_analysis.get("lip_hex"),
+                                "fitzpatrick": face_analysis.get("fitzpatrick_type"),
+                                "monk_shade": face_analysis.get("monk_shade"),
+                                "undertone": face_analysis.get("undertone"),
+                                "face_detected": face_analysis.get("face_detected", True),
+                                "quality_score": face_analysis.get("quality_score"),
+                                "embedding": face_analysis.get("embedding"),
+                            }
+                            logger.info(f"🎨 AnalyzeFace result: skin={analysis_result.get('skin_hex')}, monk={analysis_result.get('monk_shade')}")
                 
                 # Source 2: Tables (from Cortex Analyst)
                 for table in tables:
@@ -591,7 +627,8 @@ async def invoke_cortex_agent_rest(
                     "message_id": message_id,
                     "products": extracted_products if extracted_products else None,
                     "customer_match": customer_match,
-                    "cart_update": cart_update
+                    "cart_update": cart_update,
+                    "analysis_result": analysis_result  # V2: From AnalyzeFace tool
                 }
     
     except httpx.TimeoutException:
@@ -1241,39 +1278,100 @@ async def chat_endpoint(request: ChatRequest):
     # Process image and build enriched message if image is present
     enriched_message = request.message
     analysis_data = None
+    stage_path = None
     
     if request.image_base64:
+        # V2: Upload image to stage and let agent call TOOL_ANALYZE_FACE
         try:
-            image = decode_base64_image(request.image_base64)
-            skin_result = analyze_skin(image)
-            embedding_result = extract_face_embedding(image)
+            import tempfile
+            import os
             
-            if skin_result.get("success"):
-                # Get the embedding (128-dim vector)
-                embedding = embedding_result.get("embedding", [])
-                face_detected = embedding_result.get("face_detected", False) and len(embedding) == 128
+            # Decode and save to temp file
+            image_bytes = base64.b64decode(request.image_base64)
+            file_ext = "jpg"  # Default extension
+            unique_filename = f"{uuid.uuid4()}.{file_ext}"
+            
+            # Get Snowflake connection from SPCS environment
+            token = get_spcs_token()
+            host = get_snowflake_host()
+            
+            if token and host:
+                try:
+                    from snowflake.snowpark import Session
+                    
+                    # Create Snowpark session
+                    connection_params = {
+                        "host": host,
+                        "authenticator": "oauth",
+                        "token": token,
+                        "database": "AGENT_COMMERCE",
+                        "schema": "CUSTOMERS",
+                        "warehouse": "AGENT_COMMERCE_WH"
+                    }
+                    
+                    session = Session.builder.configs(connection_params).create()
+                    
+                    # Write to temp file and upload to stage
+                    with tempfile.NamedTemporaryFile(suffix=f".{file_ext}", delete=False) as tmp:
+                        tmp.write(image_bytes)
+                        tmp_path = tmp.name
+                    
+                    stage_name = "@CUSTOMERS.FACE_UPLOAD_STAGE"
+                    session.file.put(tmp_path, stage_name, auto_compress=False, overwrite=True)
+                    os.unlink(tmp_path)
+                    
+                    stage_path = f"{stage_name}/{unique_filename}"
+                    session.close()
+                    
+                    logger.info(f"✅ Image uploaded to stage: {stage_path}")
+                    
+                    # V2: Tell agent to use TOOL_ANALYZE_FACE with stage path
+                    enriched_message = f"""The user uploaded a face image to: {stage_path}
+
+Please use the AnalyzeFace tool with this stage path to analyze the image and extract:
+- Face embedding (for customer identification)
+- Skin tone, undertone, Fitzpatrick type, Monk shade
+- Lip color
+
+After analyzing, use IdentifyCustomer with the embedding_json to check if they are a returning customer. If a match is found with confidence > 0.45, ask them to confirm their identity. Then recommend products based on their skin tone using MatchProducts.
+
+User's request: {request.message or "Analyze my face and recommend products"}"""
+                    
+                except ImportError:
+                    logger.warning("⚠️ Snowpark not available, falling back to local analysis")
+                    stage_path = None
+                except Exception as e:
+                    logger.error(f"❌ Stage upload failed: {e}, falling back to local analysis")
+                    stage_path = None
+            
+            # Fallback: If stage upload failed, do local analysis (V1 behavior)
+            if not stage_path:
+                logger.info("📷 Stage upload not available, using local analysis (V1 fallback)")
+                image = decode_base64_image(request.image_base64)
+                skin_result = analyze_skin(image)
+                embedding_result = extract_face_embedding(image)
                 
-                analysis_data = {
-                    "success": True,
-                    "skin_hex": skin_result.get("skin_hex"),
-                    "lip_hex": skin_result.get("lip_hex"),
-                    "fitzpatrick": skin_result.get("fitzpatrick_type"),  # Frontend expects 'fitzpatrick'
-                    "monk_shade": skin_result.get("monk_shade"),
-                    "undertone": skin_result.get("undertone"),
-                    "face_detected": face_detected,
-                    "quality_score": embedding_result.get("quality_score"),
-                    "embedding": embedding if face_detected else None,  # Include full 128-dim embedding
-                }
-                
-                # Build enriched message with FULL analysis results including embedding
-                # The agent needs the embedding to call TOOL_IDENTIFY_CUSTOMER
-                embedding_json = json.dumps(embedding) if face_detected else "null"
-                
-                # LOG THE FULL EMBEDDING for debugging/demo setup
-                if face_detected and embedding:
-                    logger.info(f"🧬 REAL EMBEDDING (copy for SQL): {embedding_json}")
-                
-                enriched_message = f"""The user uploaded a face image. Here are the analysis results:
+                if skin_result.get("success"):
+                    embedding = embedding_result.get("embedding", [])
+                    face_detected = embedding_result.get("face_detected", False) and len(embedding) == 128
+                    
+                    analysis_data = {
+                        "success": True,
+                        "skin_hex": skin_result.get("skin_hex"),
+                        "lip_hex": skin_result.get("lip_hex"),
+                        "fitzpatrick": skin_result.get("fitzpatrick_type"),
+                        "monk_shade": skin_result.get("monk_shade"),
+                        "undertone": skin_result.get("undertone"),
+                        "face_detected": face_detected,
+                        "quality_score": embedding_result.get("quality_score"),
+                        "embedding": embedding if face_detected else None,
+                    }
+                    
+                    embedding_json = json.dumps(embedding) if face_detected else "null"
+                    if face_detected and embedding:
+                        logger.info(f"🧬 REAL EMBEDDING (copy for SQL): {embedding_json}")
+                    
+                    enriched_message = f"""The user uploaded a face image. Here are the analysis results:
 
 **Skin Analysis Results:**
 - Skin Tone: {skin_result.get('skin_hex')} (Monk Shade {skin_result.get('monk_shade')})
@@ -1287,12 +1385,13 @@ async def chat_endpoint(request: ChatRequest):
 
 User's request: {request.message}
 
-IMPORTANT: You now have the user's face embedding. Use TOOL_IDENTIFY_CUSTOMER with this embedding to check if they are a returning customer. If a match is found with confidence > 0.45, ask them to confirm their identity (e.g., "Is this you, [Name]?"). Then proceed to recommend products based on their skin tone."""
-                
-                logger.info(f"🎨 Image analyzed: skin={skin_result.get('skin_hex')}, monk={skin_result.get('monk_shade')}")
+IMPORTANT: You now have the user's face embedding. Use IdentifyCustomer with the embedding_json to check if they are a returning customer. If a match is found with confidence > 0.45, ask them to confirm their identity. Then recommend products based on their skin tone using MatchProducts."""
+                    
+                    logger.info(f"🎨 Image analyzed locally: skin={skin_result.get('skin_hex')}, monk={skin_result.get('monk_shade')}")
+                    
         except Exception as e:
-            logger.error(f"Image analysis error: {e}")
-            enriched_message = f"[Image uploaded but analysis failed: {str(e)}]\n\n{request.message}"
+            logger.error(f"Image processing error: {e}")
+            enriched_message = f"[Image uploaded but processing failed: {str(e)}]\n\n{request.message}"
     
     # Store the ENRICHED user message (so follow-up questions have context)
     _chat_sessions[session_id].append({
@@ -1477,26 +1576,10 @@ async def upload_image_to_stage(file: UploadFile = File(...)):
     """
     Upload an image to Snowflake Stage for face analysis.
     
+    V2: Agent will call TOOL_ANALYZE_FACE with the stage path.
     Returns the stage path that can be passed to the Cortex Agent.
-    NOTE: Stage upload is disabled - returning error to trigger base64 fallback.
     """
-    # Stage upload is not available in current setup - return error to trigger fallback
-    return StageUploadResponse(
-        success=False,
-        stage_path=None,
-        error="Stage upload not available - use base64 fallback"
-    )
-    
-    # Original implementation (disabled):
     import uuid
-    try:
-        from snowflake.snowpark import Session
-    except ImportError:
-        return StageUploadResponse(
-            success=False,
-            stage_path=None,
-            error="Snowpark not available"
-        )
     
     try:
         # Read file contents
@@ -1511,13 +1594,21 @@ async def upload_image_to_stage(file: UploadFile = File(...)):
         host = get_snowflake_host()
         
         if not token or not host:
-            # Fallback: Return base64 encoded for local processing
-            import base64
-            base64_data = base64.b64encode(contents).decode('utf-8')
+            logger.warning("⚠️ SPCS token/host not available for stage upload")
             return StageUploadResponse(
-                success=True,
-                stage_path=f"base64:{base64_data[:100]}...",  # Truncated for response
-                error="Stage upload not available - using base64 fallback"
+                success=False,
+                stage_path=None,
+                error="Stage upload requires SPCS environment"
+            )
+        
+        try:
+            from snowflake.snowpark import Session
+        except ImportError:
+            logger.warning("⚠️ Snowpark not available for stage upload")
+            return StageUploadResponse(
+                success=False,
+                stage_path=None,
+                error="Snowpark not available"
             )
         
         # Create Snowpark session using SPCS OAuth token
@@ -1534,6 +1625,7 @@ async def upload_image_to_stage(file: UploadFile = File(...)):
         
         # Write to temporary file and upload
         import tempfile
+        import os
         with tempfile.NamedTemporaryFile(suffix=f".{file_ext}", delete=False) as tmp:
             tmp.write(contents)
             tmp_path = tmp.name
@@ -1543,9 +1635,9 @@ async def upload_image_to_stage(file: UploadFile = File(...)):
         session.file.put(tmp_path, stage_name, auto_compress=False, overwrite=True)
         
         # Clean up temp file
-        import os
         os.unlink(tmp_path)
         
+        # Full stage path for the agent
         stage_path = f"{stage_name}/{unique_filename}"
         
         session.close()
@@ -1558,7 +1650,7 @@ async def upload_image_to_stage(file: UploadFile = File(...)):
         )
         
     except Exception as e:
-        logger.error(f"Stage upload failed: {e}")
+        logger.error(f"❌ Stage upload failed: {e}")
         return StageUploadResponse(
             success=False,
             error=str(e)
