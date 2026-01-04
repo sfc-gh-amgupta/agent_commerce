@@ -4,6 +4,26 @@
 -- This script creates custom tools for the Cortex Agent that cannot be 
 -- handled by Cortex Analyst (semantic views) or Cortex Search.
 --
+-- ============================================================================
+-- IMPORTANT: CORTEX AGENT TOOL COMPATIBILITY NOTES
+-- ============================================================================
+-- When creating generic (function/procedure) tools for Cortex Agent, ensure:
+--
+-- 1. RETURN TYPES: Use OBJECT, ARRAY, or simple scalar types. Cortex Agent
+--    wraps results, so returning TABLE types may cause parsing issues.
+--
+-- 2. PARAMETER DEFAULTS: Functions can have DEFAULT values, BUT in the 
+--    Agent's input_schema (11_create_cortex_agent.sql), ALL parameters must 
+--    be listed in the 'required' array. If any parameter is optional in the 
+--    input_schema, the LLM may not pass it, resulting in <nil> values and:
+--    "error building SQL query for generic tool: unsupported parameter type: <nil>"
+--
+-- 3. FUNCTION SIGNATURES: Ensure the function identifier in the agent's 
+--    tool_resources matches the exact function signature.
+--
+-- See 11_create_cortex_agent.sql for the REQUIRED_PARAMS_FIX annotations.
+-- ============================================================================
+--
 -- TOOLS CREATED (9):
 -- ┌─────────────────────────────────────────┬─────────────┬──────────────────────────────┐
 -- │ Tool                                    │ Type        │ Purpose                      │
@@ -41,36 +61,80 @@ USE WAREHOUSE AGENT_COMMERCE_WH;
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_ANALYZE_FACE
--- Extracts face embedding, skin tone, lip color from image
--- Uses Model Registry Service Function (no external access needed!)
+-- Extracts face embedding, skin tone, lip color from uploaded image
+-- Calls SPCS backend for ML processing
 -- 
--- IMPORTANT: This function calls the Model Registry service function which was
--- deployed via Snowflake Notebook. The service must exist:
---   UTIL.FACE_ANALYSIS_SERVICE!PREDICT()
--- 
--- Input: stage path (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img_123.jpg")
---        OR base64 encoded image string
--- Output: JSON with embedding, skin_hex, fitzpatrick_type, monk_shade, undertone
+-- NOTE: This UDF calls the SPCS backend. For it to work:
+--   1. The SPCS service must be running
+--   2. If calling from outside SPCS, you need EXTERNAL ACCESS INTEGRATION
+--   3. Inside SPCS network, services communicate via internal DNS
 -- ----------------------------------------------------------------------------
 USE SCHEMA CUSTOMERS;
 
--- Drop old function to avoid overload ambiguity
-DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR);
-
--- Use Model Registry Service Function (deployed via notebook)
--- This is a pure SQL function - no Python, no HTTP calls, no external access needed
-CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(image_input VARCHAR)
+CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(image_base64 VARCHAR)
 RETURNS VARIANT
-LANGUAGE SQL
+LANGUAGE PYTHON
+RUNTIME_VERSION = '3.10'
+PACKAGES = ('snowflake-snowpark-python', 'requests')
+HANDLER = 'analyze_face'
 AS
 $$
-    SELECT PARSE_JSON(
-        UTIL.ML_FACE_ANALYSIS_SERVICE!PREDICT(image_input):"output_feature_0"::VARCHAR
-    )
+import json
+
+def analyze_face(image_base64):
+    """
+    Analyze face from base64 image.
+    Returns: embedding, skin_tone, lip_color, fitzpatrick, monk_shade, undertone
+    
+    NOTE: This function calls SPCS endpoints. It works when:
+    - Running inside SPCS network (service-to-service)
+    - Or with proper EXTERNAL ACCESS INTEGRATION configured
+    """
+    try:
+        import requests
+        
+        # SPCS backend internal DNS
+        spcs_url = "http://agent-commerce-backend:8000"
+        
+        # Extract embedding
+        embedding_response = requests.post(
+            f"{spcs_url}/extract-embedding",
+            json={"image_base64": image_base64},
+            timeout=30
+        )
+        embedding_result = embedding_response.json()
+        
+        # Analyze skin
+        skin_response = requests.post(
+            f"{spcs_url}/analyze-skin",
+            json={"image_base64": image_base64},
+            timeout=30
+        )
+        skin_result = skin_response.json()
+        
+        return {
+            "success": True,
+            "face_detected": embedding_result.get("face_detected", False),
+            "embedding": embedding_result.get("embedding"),
+            "quality_score": embedding_result.get("quality_score"),
+            "skin_hex": skin_result.get("skin_hex"),
+            "skin_rgb": skin_result.get("skin_rgb"),
+            "skin_lab": skin_result.get("skin_lab"),
+            "lip_hex": skin_result.get("lip_hex"),
+            "lip_rgb": skin_result.get("lip_rgb"),
+            "fitzpatrick_type": skin_result.get("fitzpatrick_type"),
+            "monk_shade": skin_result.get("monk_shade"),
+            "undertone": skin_result.get("undertone")
+        }
+    except Exception as e:
+        return {
+            "success": False,
+            "error": str(e)
+        }
 $$;
 
 COMMENT ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) IS 
-'Analyze face from image. Input: stage path (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img.jpg") or base64. Uses ML Model Registry service function. Returns embedding_json (for IdentifyCustomer), skin_hex (for MatchProducts), lip_hex, Fitzpatrick type, Monk shade, and undertone.';
+'Analyze face from uploaded image (base64). Returns embedding (128-dim), skin tone (hex, RGB, LAB), lip color, Fitzpatrick type (1-6), Monk shade (1-10), and undertone (warm/cool/neutral). Requires SPCS backend.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_IDENTIFY_CUSTOMER
@@ -84,6 +148,16 @@ USE SCHEMA CUSTOMERS;
 -- Drop old function with ARRAY signature to avoid ambiguity
 DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(ARRAY, FLOAT, INT);
 
+-- ----------------------------------------------------------------------------
+-- Tool: TOOL_IDENTIFY_CUSTOMER
+-- Matches face embedding against stored customer embeddings
+--
+-- AGENT COMPATIBILITY NOTE: 
+--   - Parameters have DEFAULT values for direct SQL calls
+--   - In 11_create_cortex_agent.sql, ALL params must be in 'required' list
+--   - Otherwise agent gets "unsupported parameter type: <nil>" error
+--   - Returns OBJECT (not TABLE) for proper agent response parsing
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(
     query_embedding_json VARCHAR,
     match_threshold FLOAT DEFAULT 0.6,
@@ -144,12 +218,28 @@ COMMENT ON FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(VARCHAR, FLOAT, INT) IS
 -- Color matching using Euclidean RGB distance
 -- IMPORTANT: Returns ARRAY (scalar function) for Cortex Agent compatibility
 -- Table functions (UDTF) are NOT supported by Cortex Agent generic tools
+-- 
+-- FIX: Added category mapping (lipstick->lips, foundation->face, etc.)
+-- FIX: Use TRY_TO_NUMBER for graceful hex parsing
+-- FIX: Use ROW_NUMBER() to respect limit_results parameter
+-- FIX: NO CTEs - Cortex Agent may have issues with WITH clauses
 -- ----------------------------------------------------------------------------
 USE SCHEMA PRODUCTS;
 
 -- Drop existing table function to avoid overload ambiguity
 DROP FUNCTION IF EXISTS PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR, VARCHAR, INT);
 
+-- ----------------------------------------------------------------------------
+-- Tool: TOOL_MATCH_PRODUCTS
+-- Finds products matching a target color using Euclidean distance
+--
+-- AGENT COMPATIBILITY NOTE: 
+--   - Parameters have DEFAULT values for direct SQL calls
+--   - In 11_create_cortex_agent.sql, ALL params must be in 'required' list
+--   - Otherwise agent gets "unsupported parameter type: <nil>" error
+--   - Returns ARRAY (not TABLE) for proper agent response parsing
+--   - Category filter maps common names (lipstick) to DB categories (lips)
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(
     target_hex VARCHAR,
     category_filter VARCHAR DEFAULT NULL,
@@ -159,7 +249,7 @@ RETURNS ARRAY
 LANGUAGE SQL
 AS
 $$
-    SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
+    SELECT COALESCE(ARRAY_AGG(OBJECT_CONSTRUCT(
         'product_id', product_id,
         'name', name,
         'brand', brand,
@@ -168,7 +258,7 @@ $$
         'color_distance', color_distance,
         'price', price,
         'image_url', image_url
-    ))
+    )), ARRAY_CONSTRUCT())
     FROM (
         SELECT 
             p.product_id,
@@ -177,24 +267,42 @@ $$
             p.category,
             pv.color_hex AS swatch_hex,
             ROUND(SQRT(
-                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 2, 2), 'XX'), 2) +
-                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 4, 2), 'XX'), 2) +
-                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 6, 2), 'XX'), 2)
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 2, 2), 'XX'), 128), 2) +
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 4, 2), 'XX'), 128), 2) +
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 6, 2), 'XX'), 128), 2)
             ), 2) AS color_distance,
             p.current_price AS price,
-            pm.url AS image_url
+            pm.url AS image_url,
+            ROW_NUMBER() OVER (ORDER BY SQRT(
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 2, 2), 'XX'), 128), 2) +
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 4, 2), 'XX'), 128), 2) +
+                POWER(COALESCE(TRY_TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX'), 0) - 
+                      COALESCE(TRY_TO_NUMBER(SUBSTR(CASE WHEN LEFT(target_hex, 1) = '#' THEN target_hex ELSE '#' || target_hex END, 6, 2), 'XX'), 128), 2)
+            ) ASC) AS rn
         FROM PRODUCTS.PRODUCTS p
         JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
         LEFT JOIN PRODUCTS.PRODUCT_MEDIA pm ON p.product_id = pm.product_id AND pm.is_primary = TRUE
         WHERE pv.color_hex IS NOT NULL
-          AND (category_filter IS NULL OR LOWER(p.category) = LOWER(category_filter))
-        ORDER BY color_distance ASC
-        LIMIT 10
-    )
+          AND LENGTH(pv.color_hex) = 7
+          AND (category_filter IS NULL 
+               OR category_filter = ''
+               OR LOWER(p.category) = LOWER(category_filter)
+               OR (LOWER(category_filter) IN ('lipstick', 'lip', 'lip gloss', 'lipgloss') AND LOWER(p.category) = 'lips')
+               OR (LOWER(category_filter) IN ('foundation', 'concealer', 'powder', 'blush', 'bronzer', 'highlighter', 'primer') AND LOWER(p.category) = 'face')
+               OR (LOWER(category_filter) IN ('eyeshadow', 'eyeliner', 'mascara', 'brow', 'eye') AND LOWER(p.category) = 'eyes')
+               OR (LOWER(category_filter) IN ('moisturizer', 'serum', 'cleanser', 'skin') AND LOWER(p.category) = 'skincare')
+              )
+    ) sub
+    WHERE rn <= limit_results
 $$;
 
 COMMENT ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR, VARCHAR, INT) IS 
-'Find products matching a target color (hex format like #E75480). Optional category_filter (lips, eyes, face, skincare) and limit_results (default 10). Returns array of products sorted by color distance (lower = closer match).';
+'Find products matching a target color (hex format like #E75480). Category filter accepts common names (lipstick, foundation, eyeshadow) which map to DB categories (lips, face, eyes). Returns array of products sorted by color distance (lower = closer match).';
 
 -- Alternative version with required category filter (for simpler agent calls)
 DROP FUNCTION IF EXISTS PRODUCTS.TOOL_MATCH_PRODUCTS_BY_CATEGORY(VARCHAR, VARCHAR);

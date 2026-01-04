@@ -26,6 +26,7 @@ colormath==3.0.0
 pydantic==2.5.3
 python-jose==3.3.0
 requests==2.31.0
+httpx==0.27.0
 
 # Snowflake connector (for direct DB access if needed)
 snowflake-connector-python==3.6.0

@@ -3,6 +3,30 @@
 -- ============================================================================
 -- This script creates the Cortex Agent using all pre-existing tools:
 --
+-- ============================================================================
+-- CRITICAL FIX ANNOTATION (2026-01-04)
+-- ============================================================================
+-- ISSUE: Cortex Agent generic tools (IdentifyCustomer, MatchProducts) were 
+--        returning error: "unsupported parameter type: <nil>"
+--
+-- ROOT CAUSE: When optional parameters are not passed by the LLM, they become
+--             nil/null, and the Cortex Agent framework cannot build SQL queries
+--             with nil types. Error found in AI_OBSERVABILITY_EVENTS table:
+--             "error building SQL query for generic tool: unsupported parameter type: <nil>"
+--
+-- FIX: Make ALL parameters REQUIRED in input_schema (not just the first one).
+--      This forces the LLM to always pass values for all parameters.
+--      See "REQUIRED_PARAMS_FIX" comments below for the affected sections.
+--
+-- TO DIAGNOSE: Query SNOWFLAKE.LOCAL.AI_OBSERVABILITY_EVENTS for tool errors:
+--   SELECT TIMESTAMP, RECORD:name::STRING, RECORD_ATTRIBUTES
+--   FROM SNOWFLAKE.LOCAL.AI_OBSERVABILITY_EVENTS
+--   WHERE RECORD:name::STRING LIKE 'ToolCall-%'
+--   ORDER BY TIMESTAMP DESC LIMIT 20;
+--
+-- Reference: https://docs.snowflake.com/en/user-guide/snowflake-cortex/cortex-agents-monitor
+-- ============================================================================
+--
 -- PREREQUISITES (must exist before running this script):
 --   - Semantic Views (03_create_semantic_views.sql)
 --   - Cortex Search Services (04_create_cortex_search.sql)
@@ -67,21 +91,36 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
     orchestration: |
       Tool Selection Guide:
       
-      FACE IMAGE ANALYSIS FLOW (V2 - Agent-Orchestrated):
-      When the user uploads a face image (message contains a stage path like "@CUSTOMERS.FACE_UPLOAD_STAGE/..."):
+      FACE IMAGE ANALYSIS FLOW (V1 - Backend Pre-Analyzed):
+      The backend performs face analysis BEFORE calling you. When the user uploads/scans a photo,
+      the message will contain text like:
       
-      1. FIRST: Call AnalyzeFace with the stage path to extract:
-         - skin_hex, lip_hex (for color matching)
-         - fitzpatrick_type, monk_shade (for skin classification)
-         - undertone (warm/cool/neutral)
-         - embedding_json (128-dim face vector as JSON string)
+        "The user uploaded a face image. Here are the analysis results:
+         **Skin Analysis Results:**
+         - Skin Tone: #HEXCODE (Monk Shade N)
+         - Undertone: warm/cool/neutral
+         - Fitzpatrick Type: I-VI
+         - Lip Color: #HEXCODE
+         - Face Detected: true/false
+         
+         **Face Embedding (128-dimensional vector for customer identification):**
+         [0.1, 0.2, 0.3, ... 128 numbers ...]
+         
+         User's request: ..."
       
-      2. THEN: Call IdentifyCustomer with the embedding_json from AnalyzeFace result
-         - If match found with confidence > 0.45, ask user to confirm identity
-         - IMPORTANT: Pass embedding_json as a string, NOT as an array object
+      When you see this format in the message:
       
-      3. FINALLY: Call MatchProducts with skin_hex from AnalyzeFace result
-         - Recommend products that match their skin tone
+      1. FIRST: Call IdentifyCustomer with the embedding array from the message
+         - Copy the ENTIRE array [0.1, 0.2, ...] as the query_embedding_json parameter
+         - If match found with confidence > 0.45, greet the returning customer by name
+         - If no match (confidence = 0), treat as a new customer
+      
+      2. THEN: Call MatchProducts with the Skin Tone hex code (e.g., "#A67B5B")
+         - Recommend products that complement their skin tone
+         - Use category_filter for specific product types (e.g., "lips", "face", "eyes")
+      
+      IMPORTANT: Do NOT call AnalyzeFace - the backend already did this analysis.
+      The face data is already in your message - just extract and use it.
       
       PRODUCT DISCOVERY:
       - Natural language product search: use ProductSearch (e.g., "vegan mascara", "hydrating foundation")
@@ -118,7 +157,7 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
       
       GUIDELINES:
       - Be warm, professional, and knowledgeable
-      - When customer uploads a photo, use AnalyzeFace to understand their skin
+      - When face analysis data is provided, use it directly (DO NOT call AnalyzeFace)
       - Explain technical terms (undertones, Fitzpatrick scale) in simple language
       - Use MatchProducts to find products complementing their skin tone
       - Always mention relevant reviews or social proof when recommending products
@@ -229,6 +268,9 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
           required:
             - stage_path
     
+    # REQUIRED_PARAMS_FIX: ALL parameters must be in 'required' list to prevent
+    # "unsupported parameter type: <nil>" error when agent calls this function.
+    # If you remove parameters from 'required', the agent will fail with error code 370001.
     - tool_spec:
         type: generic
         name: IdentifyCustomer
@@ -244,13 +286,18 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
               description: 128-dimensional face embedding as JSON string (e.g., "[0.1, 0.2, ...]") from AnalyzeFace result
             match_threshold:
               type: number
-              description: Minimum match confidence threshold (default 0.6, range 0-1)
+              description: Match confidence threshold (range 0-1). Use 0.6 for typical matching.
             max_results:
               type: integer
-              description: Maximum number of matching customers to return (default 5)
-          required:
+              description: Maximum number of matching customers to return. Use 5 for typical results.
+          required:  # REQUIRED_PARAMS_FIX: ALL params must be listed here
             - query_embedding_json
+            - match_threshold
+            - max_results
     
+    # REQUIRED_PARAMS_FIX: ALL parameters must be in 'required' list to prevent
+    # "unsupported parameter type: <nil>" error when agent calls this function.
+    # If you remove parameters from 'required', the agent will fail with error code 370001.
     - tool_spec:
         type: generic
         name: MatchProducts
@@ -266,12 +313,14 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
               description: Target color in hex format (e.g., "#E75480" or "#8B4513")
             category_filter:
               type: string
-              description: Optional product category to filter (lipstick, foundation, eyeshadow, blush)
+              description: Product category to filter (lipstick, foundation, eyeshadow, blush). Pass null or empty string for no filter.
             limit_results:
               type: integer
-              description: Maximum number of color matches to return (default 10)
-          required:
+              description: Maximum number of color matches to return. Use 10 for typical results.
+          required:  # REQUIRED_PARAMS_FIX: ALL params must be listed here
             - target_hex
+            - category_filter
+            - limit_results
     
     # =========================================================================
     # GENERIC TOOLS - ACP Cart/Checkout (6) - Stored Procedures for transactions

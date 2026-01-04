@@ -17,4 +17,5 @@ mediapipe==0.10.9
 # Utilities
 pydantic==2.5.3
 requests==2.31.0
+httpx==0.27.0
 

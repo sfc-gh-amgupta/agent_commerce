@@ -133,11 +133,6 @@ CREATE STAGE IF NOT EXISTS FACE_IMAGES
     DIRECTORY = (ENABLE = TRUE)
     COMMENT = 'Temporary storage for face images during analysis';
 
--- Stage for V2 face upload (agent-orchestrated analysis)
-CREATE STAGE IF NOT EXISTS FACE_UPLOAD_STAGE
-    DIRECTORY = (ENABLE = TRUE)
-    COMMENT = 'Face images uploaded via widget for agent to analyze with TOOL_ANALYZE_FACE';
-
 -- Stage for product media (labels, swatches)
 USE SCHEMA PRODUCTS;
 CREATE STAGE IF NOT EXISTS PRODUCT_MEDIA
