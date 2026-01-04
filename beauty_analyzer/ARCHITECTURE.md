@@ -230,7 +230,7 @@ tools:
   - SocialSearch           # SOCIAL.SOCIAL_SEARCH_SERVICE
 
   # Beauty Analysis (3) - Custom UDFs
-  - AnalyzeFace            # CUSTOMERS.TOOL_ANALYZE_FACE (Python UDF → SPCS)
+  - AnalyzeFace            # CUSTOMERS.TOOL_ANALYZE_FACE (SQL → Model Registry Service)
   - IdentifyCustomer       # CUSTOMERS.TOOL_IDENTIFY_CUSTOMER (SQL UDTF)
   - MatchProducts          # PRODUCTS.TOOL_MATCH_PRODUCTS (SQL UDTF)
 

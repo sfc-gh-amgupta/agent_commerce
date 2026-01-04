@@ -41,114 +41,36 @@ USE WAREHOUSE AGENT_COMMERCE_WH;
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_ANALYZE_FACE
--- Extracts face embedding, skin tone, lip color from image in Snowflake Stage
--- Calls SPCS backend for ML processing
+-- Extracts face embedding, skin tone, lip color from image
+-- Uses Model Registry Service Function (no external access needed!)
 -- 
--- V2: Accepts stage path (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img_123.jpg")
---     instead of base64 for cleaner agent orchestration
+-- IMPORTANT: This function calls the Model Registry service function which was
+-- deployed via Snowflake Notebook. The service must exist:
+--   UTIL.FACE_ANALYSIS_SERVICE!PREDICT()
 -- 
--- NOTE: This UDF calls the SPCS backend. For it to work:
---   1. The SPCS service must be running
---   2. Inside SPCS network, services communicate via internal DNS
+-- Input: stage path (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img_123.jpg")
+--        OR base64 encoded image string
+-- Output: JSON with embedding, skin_hex, fitzpatrick_type, monk_shade, undertone
 -- ----------------------------------------------------------------------------
 USE SCHEMA CUSTOMERS;
 
 -- Drop old function to avoid overload ambiguity
 DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR);
 
-CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(stage_path VARCHAR)
+-- Use Model Registry Service Function (deployed via notebook)
+-- This is a pure SQL function - no Python, no HTTP calls, no external access needed
+CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(image_input VARCHAR)
 RETURNS VARIANT
-LANGUAGE PYTHON
-RUNTIME_VERSION = '3.10'
-PACKAGES = ('snowflake-snowpark-python', 'requests')
-HANDLER = 'analyze_face'
+LANGUAGE SQL
 AS
 $$
-import json
-import base64
-
-def analyze_face(stage_path):
-    """
-    Analyze face from image stored in Snowflake Stage.
-    
-    Args:
-        stage_path: Path to image in stage (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img_123.jpg")
-                    OR base64 encoded image string (for backward compatibility)
-    
-    Returns: embedding, skin_tone, lip_color, fitzpatrick, monk_shade, undertone
-    """
-    try:
-        import requests
-        from snowflake.snowpark import Session
-        from snowflake.snowpark.context import get_active_session
-        
-        # Check if input is base64 or stage path
-        if stage_path.startswith('@') or stage_path.startswith('CUSTOMERS.'):
-            # Read image from stage
-            session = get_active_session()
-            
-            # Normalize stage path
-            if not stage_path.startswith('@'):
-                stage_path = f"@{stage_path}"
-            
-            # Download file from stage to bytes
-            import io
-            file_stream = session.file.get_stream(stage_path)
-            image_bytes = file_stream.read()
-            image_base64 = base64.b64encode(image_bytes).decode('utf-8')
-        else:
-            # Assume it's already base64 (backward compatibility)
-            image_base64 = stage_path
-        
-        # SPCS backend internal DNS
-        spcs_url = "http://agent-commerce-backend:8000"
-        
-        # Extract embedding
-        embedding_response = requests.post(
-            f"{spcs_url}/extract-embedding",
-            json={"image_base64": image_base64},
-            timeout=30
-        )
-        embedding_result = embedding_response.json()
-        
-        # Analyze skin
-        skin_response = requests.post(
-            f"{spcs_url}/analyze-skin",
-            json={"image_base64": image_base64},
-            timeout=30
-        )
-        skin_result = skin_response.json()
-        
-        # Return embedding as JSON string for agent to pass to IdentifyCustomer
-        embedding = embedding_result.get("embedding")
-        embedding_json = json.dumps(embedding) if embedding else None
-        
-        return {
-            "success": True,
-            "face_detected": embedding_result.get("face_detected", False),
-            "embedding": embedding,
-            "embedding_json": embedding_json,  # Ready for IdentifyCustomer
-            "quality_score": embedding_result.get("quality_score"),
-            "skin_hex": skin_result.get("skin_hex"),
-            "skin_rgb": skin_result.get("skin_rgb"),
-            "skin_lab": skin_result.get("skin_lab"),
-            "lip_hex": skin_result.get("lip_hex"),
-            "lip_rgb": skin_result.get("lip_rgb"),
-            "fitzpatrick_type": skin_result.get("fitzpatrick_type"),
-            "monk_shade": skin_result.get("monk_shade"),
-            "undertone": skin_result.get("undertone"),
-            "stage_path": stage_path
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e),
-            "stage_path": stage_path
-        }
+    SELECT PARSE_JSON(
+        UTIL.ML_FACE_ANALYSIS_SERVICE!PREDICT(image_input):"output_feature_0"::VARCHAR
+    )
 $$;
 
 COMMENT ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) IS 
-'Analyze face from image in Snowflake Stage. Pass stage path like "@CUSTOMERS.FACE_UPLOAD_STAGE/img_123.jpg". Returns embedding_json (for IdentifyCustomer), skin_hex (for MatchProducts), lip_hex, Fitzpatrick type, Monk shade, and undertone.';
+'Analyze face from image. Input: stage path (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/img.jpg") or base64. Uses ML Model Registry service function. Returns embedding_json (for IdentifyCustomer), skin_hex (for MatchProducts), lip_hex, Fitzpatrick type, Monk shade, and undertone.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_IDENTIFY_CUSTOMER
