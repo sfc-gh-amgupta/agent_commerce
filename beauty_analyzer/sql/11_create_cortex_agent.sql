@@ -162,12 +162,36 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
       INVENTORY:
       - Stock availability, store locations: use InventoryAnalyst
       
+      PRODUCT RECOMMENDATIONS FORMAT (IMPORTANT):
+      When recommending products from MatchProducts or any product search:
+      
+      1. ALWAYS include the product_id in your response for EVERY product mentioned
+      2. Format: "**Product Name** (ID: product-uuid) - $XX.XX"
+      3. Example: "**Tarte Essential Concealer** (ID: abe5bdfd-6eaf-4741-b875-213a0e3a0861) - $42.55"
+      
+      This ensures you can correctly add products to cart in future turns.
+      The product_id is essential for the ACP_AddItem tool to work correctly.
+      
+      Note: If you don't have the product_id UUID, you may use the exact product name
+      when calling cart tools - they will look up the product for you.
+      
       CART & CHECKOUT FLOW (ACP-Compliant):
       1. ACP_CreateCart - Start a new cart for the customer
-      2. ACP_AddItem - Add products to cart (requires session_id, product_id, quantity, variant_id)
-      3. ACP_GetCart - Show cart contents
-      4. ACP_UpdateItem / ACP_RemoveItem - Modify cart
+      2. ACP_AddItem - Add products to cart (requires session_id, product_id OR product_name, quantity, variant_id)
+      3. ACP_GetCart - Show cart contents (accepts session_id OR customer_id)
+      4. ACP_UpdateItem / ACP_RemoveItem - Modify cart (accepts item_id OR product_name)
       5. ACP_Checkout - Complete the order
+      
+      CART SESSION FORMAT (CRITICAL FOR NEW CUSTOMERS):
+      After creating a cart, ALWAYS include the session_id in your response.
+      This is essential for retrieving the cart in future turns.
+      
+      Example response after cart creation:
+      "I've created your cart (Session: a8a78ebd-f8d2-4518-a380-ff268295abc8) and added:
+       - Product Name - $XX.XX"
+      
+      For existing/verified customers, you can also use their customer_id (like their email)
+      to look up their cart if you don't have the session_id.
     
     system: |
       You are the AI Commerce Assistant for an upscale cosmetics retailer.
@@ -424,16 +448,22 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
         name: ACP_UpdateItem
         description: |
           Update the quantity of an item already in the cart.
+          Requires session_id from ACP_CreateCart or ACP_AddItem response.
+          item_id can be the UUID from ACP_GetCart or the product name.
         input_schema:
           type: object
           properties:
+            session_id:
+              type: string
+              description: Cart session ID (from ACP_CreateCart) or customer_id as fallback
             item_id:
               type: string
-              description: Cart item ID to update (from ACP_GetCart)
+              description: Cart item ID (from ACP_GetCart) or product name
             new_quantity:
               type: integer
               description: New quantity for the item
           required:
+            - session_id
             - item_id
             - new_quantity
     
@@ -442,13 +472,19 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
         name: ACP_RemoveItem
         description: |
           Remove an item from the cart completely.
+          Requires session_id from ACP_CreateCart or ACP_AddItem response.
+          item_id can be the UUID from ACP_GetCart or the product name.
         input_schema:
           type: object
           properties:
+            session_id:
+              type: string
+              description: Cart session ID (from ACP_CreateCart) or customer_id as fallback
             item_id:
               type: string
-              description: Cart item ID to remove (from ACP_GetCart)
+              description: Cart item ID (from ACP_GetCart) or product name
           required:
+            - session_id
             - item_id
     
     - tool_spec:

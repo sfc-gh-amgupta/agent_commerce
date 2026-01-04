@@ -1,0 +1,1212 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>LUMIÈRE | Luxury Beauty & Skincare</title>
+    <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,300;0,400;0,500;0,600;1,400&family=Montserrat:wght@300;400;500;600&display=swap" rel="stylesheet">
+    <style>
+        :root {
+            --champagne: #F7E7CE;
+            --rose-gold: #B76E79;
+            --deep-burgundy: #722F37;
+            --soft-cream: #FDF8F3;
+            --charcoal: #2C2C2C;
+            --gold-accent: #C9A962;
+            --blush-pink: #F5D6D0;
+        }
+
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Montserrat', sans-serif;
+            background-color: var(--soft-cream);
+            color: var(--charcoal);
+            overflow-x: hidden;
+        }
+
+        /* Announcement Bar */
+        .announcement-bar {
+            background: linear-gradient(90deg, var(--deep-burgundy), var(--rose-gold));
+            color: white;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+        }
+
+        /* Navigation */
+        nav {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 20px 60px;
+            background: var(--soft-cream);
+            position: sticky;
+            top: 0;
+            z-index: 1000;
+            border-bottom: 1px solid rgba(183, 110, 121, 0.1);
+        }
+
+        .nav-links {
+            display: flex;
+            gap: 40px;
+            list-style: none;
+        }
+
+        .nav-links a {
+            text-decoration: none;
+            color: var(--charcoal);
+            font-size: 13px;
+            letter-spacing: 1.5px;
+            text-transform: uppercase;
+            font-weight: 500;
+            transition: color 0.3s ease;
+            position: relative;
+        }
+
+        .nav-links a::after {
+            content: '';
+            position: absolute;
+            bottom: -5px;
+            left: 0;
+            width: 0;
+            height: 1px;
+            background: var(--rose-gold);
+            transition: width 0.3s ease;
+        }
+
+        .nav-links a:hover::after {
+            width: 100%;
+        }
+
+        .nav-links a:hover {
+            color: var(--rose-gold);
+        }
+
+        .logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 32px;
+            font-weight: 300;
+            letter-spacing: 8px;
+            color: var(--deep-burgundy);
+        }
+
+        .nav-icons {
+            display: flex;
+            gap: 25px;
+            align-items: center;
+        }
+
+        .nav-icons svg {
+            width: 22px;
+            height: 22px;
+            cursor: pointer;
+            stroke: var(--charcoal);
+            transition: stroke 0.3s ease;
+        }
+
+        .nav-icons svg:hover {
+            stroke: var(--rose-gold);
+        }
+
+        .cart-count {
+            background: var(--rose-gold);
+            color: white;
+            font-size: 10px;
+            padding: 2px 6px;
+            border-radius: 50%;
+            margin-left: -10px;
+            margin-top: -10px;
+        }
+
+        /* Hero Section */
+        .hero {
+            height: 85vh;
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            background: linear-gradient(135deg, var(--champagne) 0%, var(--soft-cream) 50%, var(--blush-pink) 100%);
+            position: relative;
+            overflow: hidden;
+        }
+
+        .hero::before {
+            content: '';
+            position: absolute;
+            top: -50%;
+            right: -20%;
+            width: 80%;
+            height: 200%;
+            background: radial-gradient(ellipse, rgba(183, 110, 121, 0.08) 0%, transparent 70%);
+            pointer-events: none;
+        }
+
+        .hero-content {
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 0 80px;
+            animation: fadeInUp 1s ease-out;
+        }
+
+        @keyframes fadeInUp {
+            from {
+                opacity: 0;
+                transform: translateY(30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .hero-subtitle {
+            font-size: 12px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--rose-gold);
+            margin-bottom: 20px;
+        }
+
+        .hero-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 72px;
+            font-weight: 300;
+            line-height: 1.1;
+            color: var(--charcoal);
+            margin-bottom: 30px;
+        }
+
+        .hero-title em {
+            font-style: italic;
+            color: var(--deep-burgundy);
+        }
+
+        .hero-description {
+            font-size: 15px;
+            line-height: 1.8;
+            color: #666;
+            max-width: 450px;
+            margin-bottom: 40px;
+            font-weight: 300;
+        }
+
+        .btn-primary {
+            display: inline-block;
+            background: var(--deep-burgundy);
+            color: white;
+            padding: 18px 45px;
+            text-decoration: none;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            transition: all 0.4s ease;
+            border: 2px solid var(--deep-burgundy);
+        }
+
+        .btn-primary:hover {
+            background: transparent;
+            color: var(--deep-burgundy);
+        }
+
+        .hero-image {
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .hero-product-card {
+            width: 400px;
+            height: 550px;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 40px 80px rgba(114, 47, 55, 0.15);
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            padding: 40px;
+            animation: float 6s ease-in-out infinite;
+            position: relative;
+        }
+
+        @keyframes float {
+            0%, 100% { transform: translateY(0); }
+            50% { transform: translateY(-20px); }
+        }
+
+        .hero-product-card::before {
+            content: '✦';
+            position: absolute;
+            top: 30px;
+            right: 30px;
+            color: var(--gold-accent);
+            font-size: 20px;
+        }
+
+        .product-image-placeholder {
+            width: 200px;
+            height: 280px;
+            background: linear-gradient(180deg, var(--blush-pink), var(--champagne));
+            border-radius: 100px 100px 20px 20px;
+            margin-bottom: 30px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .product-image-placeholder::after {
+            content: 'SÉRUM';
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 14px;
+            letter-spacing: 3px;
+            color: var(--deep-burgundy);
+            position: absolute;
+            bottom: 40px;
+        }
+
+        .hero-product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 24px;
+            margin-bottom: 10px;
+            color: var(--charcoal);
+        }
+
+        .hero-product-price {
+            color: var(--rose-gold);
+            font-size: 18px;
+            font-weight: 500;
+        }
+
+        /* Categories Section */
+        .categories {
+            padding: 100px 60px;
+        }
+
+        .section-header {
+            text-align: center;
+            margin-bottom: 60px;
+        }
+
+        .section-subtitle {
+            font-size: 11px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--rose-gold);
+            margin-bottom: 15px;
+        }
+
+        .section-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 48px;
+            font-weight: 300;
+            color: var(--charcoal);
+        }
+
+        .categories-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 30px;
+        }
+
+        .category-card {
+            position: relative;
+            height: 400px;
+            overflow: hidden;
+            cursor: pointer;
+            border-radius: 15px;
+        }
+
+        .category-bg {
+            width: 100%;
+            height: 100%;
+            transition: transform 0.6s ease;
+        }
+
+        .category-card:nth-child(1) .category-bg {
+            background: url('https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=400&h=500&fit=crop') center/cover;
+        }
+
+        .category-card:nth-child(2) .category-bg {
+            background: url('https://images.unsplash.com/photo-1512496015851-a90fb38ba796?w=400&h=500&fit=crop') center/cover;
+        }
+
+        .category-card:nth-child(3) .category-bg {
+            background: url('https://images.unsplash.com/photo-1570194065650-d99fb4b38b15?w=400&h=500&fit=crop') center/cover;
+        }
+
+        .category-card:nth-child(4) .category-bg {
+            background: url('https://images.unsplash.com/photo-1541643600914-78b084683601?w=400&h=500&fit=crop') center/cover;
+        }
+
+        .category-card:hover .category-bg {
+            transform: scale(1.05);
+        }
+
+        .category-content {
+            position: absolute;
+            bottom: 0;
+            left: 0;
+            right: 0;
+            padding: 30px;
+            background: linear-gradient(transparent, rgba(44, 44, 44, 0.8));
+            color: white;
+        }
+
+        .category-icon {
+            font-size: 30px;
+            margin-bottom: 15px;
+        }
+
+        .category-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 26px;
+            margin-bottom: 5px;
+        }
+
+        .category-count {
+            font-size: 12px;
+            opacity: 0.8;
+            letter-spacing: 1px;
+        }
+
+        /* Featured Products */
+        .featured {
+            padding: 100px 60px;
+            background: white;
+        }
+
+        .products-grid {
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+        }
+
+        a.product-card {
+            text-decoration: none;
+            color: inherit;
+            display: block;
+        }
+
+        .product-card {
+            position: relative;
+            cursor: pointer;
+        }
+
+        .product-badge {
+            position: absolute;
+            top: 15px;
+            left: 15px;
+            background: var(--rose-gold);
+            color: white;
+            padding: 5px 12px;
+            font-size: 10px;
+            letter-spacing: 1px;
+            text-transform: uppercase;
+            z-index: 10;
+        }
+
+        .product-badge.new {
+            background: var(--deep-burgundy);
+        }
+
+        .product-image {
+            height: 350px;
+            background: var(--champagne);
+            border-radius: 15px;
+            margin-bottom: 20px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+            overflow: hidden;
+            transition: all 0.4s ease;
+        }
+
+        .product-card:hover .product-image {
+            box-shadow: 0 20px 40px rgba(114, 47, 55, 0.15);
+        }
+
+        .product-placeholder {
+            width: 120px;
+            height: 180px;
+            border-radius: 60px 60px 15px 15px;
+            background: linear-gradient(180deg, white, var(--blush-pink));
+        }
+
+        .product-img {
+            width: 100%;
+            height: 100%;
+            object-fit: cover;
+            transition: transform 0.4s ease;
+        }
+
+        .product-card:hover .product-img {
+            transform: scale(1.05);
+        }
+
+        .product-actions {
+            position: absolute;
+            bottom: -50px;
+            left: 0;
+            right: 0;
+            display: flex;
+            justify-content: center;
+            gap: 10px;
+            transition: bottom 0.3s ease;
+        }
+
+        .product-card:hover .product-actions {
+            bottom: 20px;
+        }
+
+        .action-btn {
+            width: 45px;
+            height: 45px;
+            background: white;
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+            transition: all 0.3s ease;
+        }
+
+        .action-btn:hover {
+            background: var(--rose-gold);
+        }
+
+        .action-btn:hover svg {
+            stroke: white;
+        }
+
+        .action-btn svg {
+            width: 18px;
+            height: 18px;
+            stroke: var(--charcoal);
+        }
+
+        .product-info {
+            text-align: center;
+        }
+
+        .product-brand {
+            font-size: 11px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            color: var(--rose-gold);
+            margin-bottom: 8px;
+        }
+
+        .product-name {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 20px;
+            color: var(--charcoal);
+            margin-bottom: 10px;
+        }
+
+        .product-rating {
+            color: var(--gold-accent);
+            font-size: 12px;
+            margin-bottom: 10px;
+        }
+
+        .product-price {
+            font-size: 16px;
+            font-weight: 500;
+            color: var(--charcoal);
+        }
+
+        .product-price .original {
+            text-decoration: line-through;
+            color: #999;
+            margin-right: 10px;
+            font-weight: 300;
+        }
+
+        /* Promo Banner */
+        .promo-banner {
+            display: grid;
+            grid-template-columns: 1fr 1fr;
+            min-height: 500px;
+        }
+
+        .promo-content {
+            background: var(--deep-burgundy);
+            color: white;
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            padding: 80px;
+        }
+
+        .promo-label {
+            font-size: 11px;
+            letter-spacing: 4px;
+            text-transform: uppercase;
+            color: var(--champagne);
+            margin-bottom: 20px;
+        }
+
+        .promo-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 52px;
+            font-weight: 300;
+            line-height: 1.2;
+            margin-bottom: 25px;
+        }
+
+        .promo-description {
+            font-size: 15px;
+            line-height: 1.8;
+            opacity: 0.9;
+            margin-bottom: 40px;
+            max-width: 400px;
+        }
+
+        .btn-secondary {
+            display: inline-block;
+            background: transparent;
+            color: white;
+            padding: 18px 45px;
+            text-decoration: none;
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            border: 2px solid white;
+            transition: all 0.4s ease;
+            width: fit-content;
+        }
+
+        .btn-secondary:hover {
+            background: white;
+            color: var(--deep-burgundy);
+        }
+
+        .promo-image {
+            background: linear-gradient(135deg, var(--blush-pink), var(--champagne));
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            position: relative;
+        }
+
+        .promo-products {
+            display: flex;
+            gap: 20px;
+        }
+
+        .promo-product {
+            width: 150px;
+            height: 220px;
+            background: white;
+            border-radius: 75px 75px 20px 20px;
+            box-shadow: 0 20px 40px rgba(0,0,0,0.1);
+        }
+
+        /* Benefits */
+        .benefits {
+            padding: 80px 60px;
+            background: var(--soft-cream);
+            display: grid;
+            grid-template-columns: repeat(4, 1fr);
+            gap: 40px;
+        }
+
+        .benefit {
+            text-align: center;
+            padding: 30px;
+        }
+
+        .benefit-icon {
+            font-size: 40px;
+            margin-bottom: 20px;
+        }
+
+        .benefit-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 22px;
+            margin-bottom: 10px;
+            color: var(--charcoal);
+        }
+
+        .benefit-text {
+            font-size: 13px;
+            color: #666;
+            line-height: 1.7;
+        }
+
+        /* Instagram Section */
+        .instagram {
+            padding: 100px 60px;
+            background: white;
+        }
+
+        .instagram-grid {
+            display: grid;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 15px;
+        }
+
+        .instagram-item {
+            aspect-ratio: 1;
+            background: linear-gradient(135deg, var(--champagne), var(--blush-pink));
+            position: relative;
+            overflow: hidden;
+            cursor: pointer;
+        }
+
+        .instagram-item::before {
+            content: '';
+            position: absolute;
+            inset: 0;
+            background: rgba(114, 47, 55, 0);
+            transition: background 0.3s ease;
+        }
+
+        .instagram-item:hover::before {
+            background: rgba(114, 47, 55, 0.3);
+        }
+
+        .instagram-item::after {
+            content: '❤';
+            position: absolute;
+            top: 50%;
+            left: 50%;
+            transform: translate(-50%, -50%) scale(0);
+            font-size: 30px;
+            color: white;
+            transition: transform 0.3s ease;
+            z-index: 1;
+        }
+
+        .instagram-item:hover::after {
+            transform: translate(-50%, -50%) scale(1);
+        }
+
+        .instagram-item:nth-child(1) {
+            background: url('https://images.unsplash.com/photo-1522335789203-aabd1fc54bc9?w=300&h=300&fit=crop') center/cover;
+        }
+
+        .instagram-item:nth-child(2) {
+            background: url('https://images.unsplash.com/photo-1596462502278-27bfdc403348?w=300&h=300&fit=crop') center/cover;
+        }
+
+        .instagram-item:nth-child(3) {
+            background: url('https://images.unsplash.com/photo-1583241800698-e8ab01830a07?w=300&h=300&fit=crop') center/cover;
+        }
+
+        .instagram-item:nth-child(4) {
+            background: url('https://images.unsplash.com/photo-1598440947619-2c35fc9aa908?w=300&h=300&fit=crop') center/cover;
+        }
+
+        .instagram-item:nth-child(5) {
+            background: url('https://images.unsplash.com/photo-1612817288484-6f916006741a?w=300&h=300&fit=crop') center/cover;
+        }
+
+        .instagram-item:nth-child(6) {
+            background: url('https://images.unsplash.com/photo-1571875257727-256c39da42af?w=300&h=300&fit=crop') center/cover;
+        }
+
+        /* Newsletter */
+        .newsletter {
+            padding: 100px 60px;
+            background: linear-gradient(135deg, var(--champagne), var(--blush-pink));
+            text-align: center;
+        }
+
+        .newsletter-title {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 42px;
+            margin-bottom: 15px;
+            color: var(--charcoal);
+        }
+
+        .newsletter-text {
+            color: #666;
+            margin-bottom: 40px;
+            font-size: 15px;
+        }
+
+        .newsletter-form {
+            display: flex;
+            justify-content: center;
+            gap: 15px;
+            max-width: 500px;
+            margin: 0 auto;
+        }
+
+        .newsletter-input {
+            flex: 1;
+            padding: 18px 25px;
+            border: 2px solid var(--charcoal);
+            background: transparent;
+            font-family: 'Montserrat', sans-serif;
+            font-size: 14px;
+            outline: none;
+            transition: border-color 0.3s ease;
+        }
+
+        .newsletter-input::placeholder {
+            color: #999;
+        }
+
+        .newsletter-input:focus {
+            border-color: var(--rose-gold);
+        }
+
+        /* Footer */
+        footer {
+            background: var(--charcoal);
+            color: white;
+            padding: 80px 60px 40px;
+        }
+
+        .footer-grid {
+            display: grid;
+            grid-template-columns: 2fr 1fr 1fr 1fr 1.5fr;
+            gap: 60px;
+            margin-bottom: 60px;
+        }
+
+        .footer-logo {
+            font-family: 'Cormorant Garamond', serif;
+            font-size: 28px;
+            letter-spacing: 6px;
+            margin-bottom: 20px;
+            color: var(--champagne);
+        }
+
+        .footer-about {
+            font-size: 14px;
+            line-height: 1.8;
+            opacity: 0.7;
+            max-width: 300px;
+        }
+
+        .footer-title {
+            font-size: 12px;
+            letter-spacing: 2px;
+            text-transform: uppercase;
+            margin-bottom: 25px;
+            color: var(--champagne);
+        }
+
+        .footer-links {
+            list-style: none;
+        }
+
+        .footer-links li {
+            margin-bottom: 12px;
+        }
+
+        .footer-links a {
+            color: white;
+            text-decoration: none;
+            font-size: 14px;
+            opacity: 0.7;
+            transition: opacity 0.3s ease;
+        }
+
+        .footer-links a:hover {
+            opacity: 1;
+        }
+
+        .social-links {
+            display: flex;
+            gap: 15px;
+            margin-top: 20px;
+        }
+
+        .social-link {
+            width: 40px;
+            height: 40px;
+            border: 1px solid rgba(255,255,255,0.3);
+            border-radius: 50%;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            color: white;
+            text-decoration: none;
+            transition: all 0.3s ease;
+        }
+
+        .social-link:hover {
+            background: var(--rose-gold);
+            border-color: var(--rose-gold);
+        }
+
+        .footer-bottom {
+            border-top: 1px solid rgba(255,255,255,0.1);
+            padding-top: 30px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .footer-copyright {
+            font-size: 13px;
+            opacity: 0.6;
+        }
+
+        .payment-methods {
+            display: flex;
+            gap: 15px;
+        }
+
+        .payment-icon {
+            width: 50px;
+            height: 30px;
+            background: rgba(255,255,255,0.1);
+            border-radius: 5px;
+        }
+
+        /* Animations */
+        @keyframes shimmer {
+            0% { background-position: -200% 0; }
+            100% { background-position: 200% 0; }
+        }
+
+        .shimmer {
+            background: linear-gradient(90deg, transparent 25%, rgba(255,255,255,0.3) 50%, transparent 75%);
+            background-size: 200% 100%;
+            animation: shimmer 2s infinite;
+        }
+    </style>
+</head>
+<body>
+    <!-- Announcement Bar -->
+    <div class="announcement-bar">
+        Free Shipping on Orders Over $75 ✦ Use Code: GLOW25 for 25% Off
+    </div>
+
+    <!-- Navigation -->
+    <nav>
+        <ul class="nav-links">
+            <li><a href="#">New Arrivals</a></li>
+            <li><a href="#">Skincare</a></li>
+            <li><a href="#">Makeup</a></li>
+            <li><a href="#">Fragrance</a></li>
+        </ul>
+        
+        <div class="logo">LUMIÈRE</div>
+        
+        <div class="nav-icons">
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="m21 21-5.197-5.197m0 0A7.5 7.5 0 1 0 5.196 5.196a7.5 7.5 0 0 0 10.607 10.607Z" />
+            </svg>
+            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 6a3.75 3.75 0 1 1-7.5 0 3.75 3.75 0 0 1 7.5 0ZM4.501 20.118a7.5 7.5 0 0 1 14.998 0A17.933 17.933 0 0 1 12 21.75c-2.676 0-5.216-.584-7.499-1.632Z" />
+            </svg>
+            <div style="position: relative; display: flex; align-items: center;">
+                <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                    <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                </svg>
+                <span class="cart-count">3</span>
+            </div>
+        </div>
+    </nav>
+
+    <!-- Hero Section -->
+    <section class="hero">
+        <div class="hero-content">
+            <span class="hero-subtitle">Holiday Collection 2024</span>
+            <h1 class="hero-title">Discover Your<br><em>Natural Radiance</em></h1>
+            <p class="hero-description">Luxurious skincare formulated with the finest botanical ingredients. Reveal your most luminous complexion with our award-winning collection.</p>
+            <a href="#" class="btn-primary">Explore Collection</a>
+        </div>
+        <div class="hero-image">
+            <div class="hero-product-card">
+                <img src="https://images.unsplash.com/photo-1617897903246-719242758050?w=300&h=400&fit=crop" alt="Radiance Renewal Serum" style="width: 200px; height: 280px; object-fit: cover; border-radius: 100px 100px 20px 20px; margin-bottom: 30px;">
+                <h3 class="hero-product-name">Radiance Renewal Serum</h3>
+                <span class="hero-product-price">$128.00</span>
+            </div>
+        </div>
+    </section>
+
+    <!-- Categories Section -->
+    <section class="categories">
+        <div class="section-header">
+            <span class="section-subtitle">Browse By</span>
+            <h2 class="section-title">Shop Categories</h2>
+        </div>
+        <div class="categories-grid">
+            <div class="category-card">
+                <div class="category-bg"></div>
+                <div class="category-content">
+                    <div class="category-icon">🌸</div>
+                    <h3 class="category-name">Skincare</h3>
+                    <span class="category-count">248 Products</span>
+                </div>
+            </div>
+            <div class="category-card">
+                <div class="category-bg"></div>
+                <div class="category-content">
+                    <div class="category-icon">💄</div>
+                    <h3 class="category-name">Makeup</h3>
+                    <span class="category-count">186 Products</span>
+                </div>
+            </div>
+            <div class="category-card">
+                <div class="category-bg"></div>
+                <div class="category-content">
+                    <div class="category-icon">✨</div>
+                    <h3 class="category-name">Body Care</h3>
+                    <span class="category-count">124 Products</span>
+                </div>
+            </div>
+            <div class="category-card">
+                <div class="category-bg"></div>
+                <div class="category-content">
+                    <div class="category-icon">🌿</div>
+                    <h3 class="category-name">Fragrance</h3>
+                    <span class="category-count">89 Products</span>
+                </div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Featured Products -->
+    <section class="featured">
+        <div class="section-header">
+            <span class="section-subtitle">Curated For You</span>
+            <h2 class="section-title">Bestsellers</h2>
+        </div>
+        <div class="products-grid">
+            <a href="product-detail.html?id=1" class="product-card">
+                <div class="product-badge new">New</div>
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1620916566398-39f1143ab7be?w=400&h=500&fit=crop" alt="La Mer The Concentrate" class="product-img">
+                    <div class="product-actions">
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                            </svg>
+                        </div>
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <span class="product-brand">La Mer</span>
+                    <h3 class="product-name">The Concentrate</h3>
+                    <div class="product-rating">★★★★★ (128)</div>
+                    <div class="product-price">$395.00</div>
+                </div>
+            </a>
+            <a href="product-detail.html?id=2" class="product-card">
+                <div class="product-badge">Sale</div>
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1611930022073-b7a4ba5fcccd?w=400&h=500&fit=crop" alt="Charlotte Tilbury Magic Cream" class="product-img">
+                    <div class="product-actions">
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                            </svg>
+                        </div>
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <span class="product-brand">Charlotte Tilbury</span>
+                    <h3 class="product-name">Magic Cream</h3>
+                    <div class="product-rating">★★★★☆ (89)</div>
+                    <div class="product-price"><span class="original">$100.00</span>$75.00</div>
+                </div>
+            </a>
+            <a href="product-detail.html?id=3" class="product-card">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1608248597279-f99d160bfcbc?w=400&h=500&fit=crop" alt="Drunk Elephant C-Firma Day Serum" class="product-img">
+                    <div class="product-actions">
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                            </svg>
+                        </div>
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <span class="product-brand">Drunk Elephant</span>
+                    <h3 class="product-name">C-Firma Day Serum</h3>
+                    <div class="product-rating">★★★★★ (312)</div>
+                    <div class="product-price">$80.00</div>
+                </div>
+            </a>
+            <a href="product-detail.html?id=4" class="product-card">
+                <div class="product-image">
+                    <img src="https://images.unsplash.com/photo-1571781926291-c477ebfd024b?w=400&h=500&fit=crop" alt="Augustinus Bader The Rich Cream" class="product-img">
+                    <div class="product-actions">
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M21 8.25c0-2.485-2.099-4.5-4.688-4.5-1.935 0-3.597 1.126-4.312 2.733-.715-1.607-2.377-2.733-4.313-2.733C5.1 3.75 3 5.765 3 8.25c0 7.22 9 12 9 12s9-4.78 9-12Z" />
+                            </svg>
+                        </div>
+                        <div class="action-btn" onclick="event.preventDefault(); event.stopPropagation();">
+                            <svg xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" stroke-width="1.5">
+                                <path stroke-linecap="round" stroke-linejoin="round" d="M15.75 10.5V6a3.75 3.75 0 1 0-7.5 0v4.5m11.356-1.993 1.263 12c.07.665-.45 1.243-1.119 1.243H4.25a1.125 1.125 0 0 1-1.12-1.243l1.264-12A1.125 1.125 0 0 1 5.513 7.5h12.974c.576 0 1.059.435 1.119 1.007ZM8.625 10.5a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Zm7.5 0a.375.375 0 1 1-.75 0 .375.375 0 0 1 .75 0Z" />
+                            </svg>
+                        </div>
+                    </div>
+                </div>
+                <div class="product-info">
+                    <span class="product-brand">Augustinus Bader</span>
+                    <h3 class="product-name">The Rich Cream</h3>
+                    <div class="product-rating">★★★★★ (256)</div>
+                    <div class="product-price">$280.00</div>
+                </div>
+            </a>
+        </div>
+    </section>
+
+    <!-- Promo Banner -->
+    <section class="promo-banner">
+        <div class="promo-content">
+            <span class="promo-label">Limited Edition</span>
+            <h2 class="promo-title">Winter Glow<br>Gift Sets</h2>
+            <p class="promo-description">Indulge in our curated collection of holiday gift sets. Luxurious pairings wrapped in festive elegance, perfect for everyone on your list.</p>
+            <a href="#" class="btn-secondary">Shop Gift Sets</a>
+        </div>
+        <div class="promo-image">
+            <div class="promo-products">
+                <div class="promo-product"></div>
+                <div class="promo-product"></div>
+                <div class="promo-product"></div>
+            </div>
+        </div>
+    </section>
+
+    <!-- Benefits -->
+    <section class="benefits">
+        <div class="benefit">
+            <div class="benefit-icon">🚚</div>
+            <h3 class="benefit-title">Free Shipping</h3>
+            <p class="benefit-text">Complimentary shipping on all orders over $75</p>
+        </div>
+        <div class="benefit">
+            <div class="benefit-icon">🎁</div>
+            <h3 class="benefit-title">Gift Wrapping</h3>
+            <p class="benefit-text">Elegant gift wrapping available at checkout</p>
+        </div>
+        <div class="benefit">
+            <div class="benefit-icon">💎</div>
+            <h3 class="benefit-title">Rewards Program</h3>
+            <p class="benefit-text">Earn points on every purchase</p>
+        </div>
+        <div class="benefit">
+            <div class="benefit-icon">🌿</div>
+            <h3 class="benefit-title">Clean Beauty</h3>
+            <p class="benefit-text">100% cruelty-free & sustainable</p>
+        </div>
+    </section>
+
+    <!-- Instagram Section -->
+    <section class="instagram">
+        <div class="section-header">
+            <span class="section-subtitle">@LUMIERE_BEAUTY</span>
+            <h2 class="section-title">Follow Our Journey</h2>
+        </div>
+        <div class="instagram-grid">
+            <div class="instagram-item"></div>
+            <div class="instagram-item"></div>
+            <div class="instagram-item"></div>
+            <div class="instagram-item"></div>
+            <div class="instagram-item"></div>
+            <div class="instagram-item"></div>
+        </div>
+    </section>
+
+    <!-- Newsletter -->
+    <section class="newsletter">
+        <h2 class="newsletter-title">Join the Lumière Family</h2>
+        <p class="newsletter-text">Subscribe to receive exclusive offers, early access to new arrivals, and 15% off your first order.</p>
+        <form class="newsletter-form">
+            <input type="email" class="newsletter-input" placeholder="Enter your email address">
+            <button type="submit" class="btn-primary">Subscribe</button>
+        </form>
+    </section>
+
+    <!-- Footer -->
+    <footer>
+        <div class="footer-grid">
+            <div>
+                <div class="footer-logo">LUMIÈRE</div>
+                <p class="footer-about">Discover the art of beauty. We curate the world's finest skincare, makeup, and fragrance collections for the modern beauty connoisseur.</p>
+                <div class="social-links">
+                    <a href="#" class="social-link">𝕏</a>
+                    <a href="#" class="social-link">ⓕ</a>
+                    <a href="#" class="social-link">📷</a>
+                    <a href="#" class="social-link">▶</a>
+                </div>
+            </div>
+            <div>
+                <h4 class="footer-title">Shop</h4>
+                <ul class="footer-links">
+                    <li><a href="#">New Arrivals</a></li>
+                    <li><a href="#">Bestsellers</a></li>
+                    <li><a href="#">Skincare</a></li>
+                    <li><a href="#">Makeup</a></li>
+                    <li><a href="#">Fragrance</a></li>
+                    <li><a href="#">Gift Sets</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Help</h4>
+                <ul class="footer-links">
+                    <li><a href="#">Contact Us</a></li>
+                    <li><a href="#">FAQs</a></li>
+                    <li><a href="#">Shipping Info</a></li>
+                    <li><a href="#">Returns</a></li>
+                    <li><a href="#">Track Order</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Company</h4>
+                <ul class="footer-links">
+                    <li><a href="#">About Us</a></li>
+                    <li><a href="#">Careers</a></li>
+                    <li><a href="#">Press</a></li>
+                    <li><a href="#">Sustainability</a></li>
+                    <li><a href="#">Affiliates</a></li>
+                </ul>
+            </div>
+            <div>
+                <h4 class="footer-title">Contact</h4>
+                <ul class="footer-links">
+                    <li><a href="#">1-800-LUMIERE</a></li>
+                    <li><a href="#">help@lumiere.com</a></li>
+                    <li><a href="#">Mon-Fri: 9am - 6pm EST</a></li>
+                </ul>
+            </div>
+        </div>
+        <div class="footer-bottom">
+            <p class="footer-copyright">© 2024 Lumière Beauty. All rights reserved.</p>
+            <div class="payment-methods">
+                <div class="payment-icon"></div>
+                <div class="payment-icon"></div>
+                <div class="payment-icon"></div>
+                <div class="payment-icon"></div>
+            </div>
+        </div>
+    </footer>
+</body>
+</html>
+

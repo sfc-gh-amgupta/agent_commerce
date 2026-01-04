@@ -1,0 +1,91 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "0a5ada26-8dae-409c-af7d-9fe04bd6a9b6",
+  "location" : "s3://amgupta-interop-demo-dbrix-delta/users/build2025/k_childs_demo83/HR_DB/DBRIX_DELTADIRECT_DATA/HR_EMPLOYEE_FACT_SM.EKs2IwZ3/",
+  "last-sequence-number" : 2,
+  "last-updated-ms" : 1761249395773,
+  "last-column-id" : 8,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "HR_FACT_ID",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 2,
+      "name" : "DATE",
+      "required" : false,
+      "type" : "date"
+    }, {
+      "id" : 3,
+      "name" : "EMPLOYEE_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 4,
+      "name" : "DEPARTMENT_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 5,
+      "name" : "JOB_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 6,
+      "name" : "LOCATION_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 7,
+      "name" : "SALARY",
+      "required" : false,
+      "type" : "decimal(10, 2)"
+    }, {
+      "id" : 8,
+      "name" : "ATTRITION_FLAG",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "format-version" : "2"
+  },
+  "current-snapshot-id" : 1400244572840752286,
+  "snapshots" : [ {
+    "sequence-number" : 2,
+    "snapshot-id" : 1400244572840752286,
+    "timestamp-ms" : 1761249395773,
+    "manifest-list" : "s3://amgupta-interop-demo-dbrix-delta/users/build2025/k_childs_demo83/HR_DB/DBRIX_DELTADIRECT_DATA/HR_EMPLOYEE_FACT_SM.EKs2IwZ3/metadata/snap-1761249395773000000-33f38314-13d1-44b0-be9a-86b204512a02.avro",
+    "schema-id" : 0,
+    "summary" : {
+      "manifests-replaced" : "0",
+      "added-data-files" : "1",
+      "added-records" : "3458",
+      "total-files-size" : "30208",
+      "manifests-kept" : "0",
+      "added-files-size" : "30208",
+      "total-records" : "3458",
+      "manifests-created" : "1",
+      "total-data-files" : "1"
+    }
+  } ],
+  "snapshot-log" : [ {
+    "snapshot-id" : 1400244572840752286,
+    "timestamp-ms" : 1761249395773
+  } ]
+}

@@ -1,0 +1,257 @@
+
+SELECT "order",
+     account_id,
+     advertiser_id,
+     conversion_id,
+     ord,
+     rx_timestamp,
+     tag_id,
+     value,
+     auction_id,
+     bid_time,
+     buzz_key,
+     user_id
+FROM
+ (
+    SELECT ROW_NUMBER() OVER (PARTITION BY conv.conversion_id
+                              -- ranking filtered impression by sorting them
+                              -- on bid_time => ensures the newest impression is ranked above older impressions
+                              ORDER BY imps.bid_time DESC) AS rank,
+          conv.ord as "order",
+          imps.account_id,
+          conv.advertiser_id,
+          conv.conversion_id,
+          conv.ord,
+          conv.rx_timestamp,
+          conv.tag_id,
+          conv.value,
+          imps.auction_id,
+          imps.bid_time,
+          imps.buzz_key,
+   imps.user_id
+  FROM impression_details imps
+  INNER JOIN pending_conversions conv ON (imps.user_id = conv.user_id OR imps.user_id_hashed = conv.user_id_hashed)
+  WHERE   -- Real-time conversions
+       conversion_type = 'NON_POSTBACK' /* filtering for NON_POSTBACK conversions */
+       /* filtering out empty user_ids before join */
+       AND GREATEST(length(nvl(imps.user_id, '')), length(nvl(imps.user_id_hashed, ''))) > 1
+       AND length(nvl(imps.user_id, '')) > 1
+       AND conv.buzz_key = imps.buzz_key
+       AND conv.account_id = imps.account_id
+       AND conv.advertiser_id = imps.advertiser_id
+       AND imps.bid_time <= conv.rx_timestamp /* impressions before the conversion */
+       AND ((imps.clicks = 1 and datediff(SECOND, bid_time, conv.rx_timestamp) <= click_window)
+        OR datediff(SECOND, bid_time, conv.rx_timestamp) <= view_window)
+  )
+WHERE rank = 1;
+
+
+SELECT account_id,
+       app_bundle,
+       app_id,
+       app_name,
+     bid_time AS bid_date,
+       buzz_key,
+       campaign_id,
+       SUM(clicks) AS clicks,
+       creative_id,
+       customer_id,
+       COUNT(auction_adgroup_id) AS impression,
+       inventory_source,
+       line_item_id,
+       SUM(win_cost_micros) AS spend,
+       SUM(video_completes) AS video_completes,
+       SUM(video_midpoints) AS video_midpoints,
+       SUM(video_plays) AS video_plays,
+       SUM(video_Q1s) AS video_Q1s,
+       SUM(video_Q3s) AS video_Q3s,
+       SUM(video_skips) AS video_skips,
+       SUM(conversions_sweep) AS conversions,
+       SUM(conversion_order_sweep) AS conversion_order,
+       SUM(conversion_value_sweep) AS conversion_value,
+       SUM(CASE WHEN in_view >= 0 THEN in_view ELSE 0 END) AS viewable_impressions,
+       SUM(CASE WHEN is_measurable >= 0 THEN is_measurable ELSE 0 END) AS measurable_impressions,
+       SUM(CASE WHEN in_view_time_millis >= 0 THEN in_view_time_millis ELSE 0 END) AS viewed_time_millis,
+       viewability_vendor_name,
+       SUM(companion_clicks) AS companion_clicks,
+       SUM(companion_views) AS companion_views,
+       currency_code,
+       SUM(clearing_price_micros_usd) AS inventory_cost_usd,
+       SUM(clearing_price_micros) AS inventory_cost,
+       SUM(win_cost_micros_usd) AS spend_usd,
+       placement_type,
+       SUM(revenue_amount_micros) AS revenue_amount_micros,
+       flight_id
+ FROM impression_details
+WHERE environment_type = 'APP' AND
+      bid_time::date BETWEEN '2010-01-01'::date AND '2010-01-31'::date
+GROUP BY bid_date,
+         buzz_key,
+         customer_id,
+         account_id,
+         campaign_id,
+         line_item_id,
+         creative_id,
+         inventory_source,
+         app_id,
+         app_bundle,
+         app_name,
+         viewability_vendor_name,
+         currency_code,
+         placement_type,
+         flight_id; 
+
+SELECT 
+bid_time AS bid_date,
+       inventory_source,
+       buzz_key,
+       account_id,
+       campaign_id,
+       line_item_id,
+       creative_id,
+       customer_id,
+       geo_city,
+       geo_country,
+       geo_metro,
+       geo_region,
+       geo_zip,
+       SUM(win_cost_micros) AS spend,
+       COUNT(auction_adgroup_id) AS impression,
+       SUM(clicks) AS clicks,
+       SUM(video_completes) AS video_completes,
+       SUM(video_midpoints) AS video_midpoints,
+       SUM(video_plays) AS video_plays,
+       SUM(video_q1s) AS video_q1s,
+       SUM(video_q3s) AS video_q3s,
+       SUM(video_skips) AS video_skips,
+       SUM(CASE WHEN in_view >= 0 THEN in_view ELSE 0 END) AS viewable_impressions,
+       SUM(CASE WHEN is_measurable >= 0 THEN is_measurable ELSE 0 END) AS measurable_impressions,
+       SUM(CASE WHEN in_view_time_millis >= 0 THEN in_view_time_millis ELSE 0 END) AS viewed_time_millis,
+       viewability_vendor_name,
+       SUM(companion_clicks) AS companion_clicks,
+       SUM(companion_views) AS companion_views,
+       currency_code,
+       SUM(clearing_price_micros_usd) AS inventory_cost_usd,
+       SUM(clearing_price_micros) AS inventory_cost,
+       SUM(win_cost_micros_usd) AS spend_usd,
+       placement_type,
+       SUM(conversions_sweep) as conversions,
+       flight_id
+FROM impression_details
+WHERE bid_time::date BETWEEN '2010-01-01'::date AND '2010-01-31'::date
+GROUP BY bid_date,
+         inventory_source,
+         buzz_key,
+         account_id,
+         campaign_id,
+         line_item_id,
+         creative_id,
+         customer_id,
+         geo_city,
+         geo_country,
+         geo_metro,
+         geo_region,
+         geo_zip,
+         viewability_vendor_name,
+         currency_code,
+         placement_type,
+         flight_id;
+
+SELECT  bid_hour,
+        creative_id,
+        line_item_id,
+        campaign_id,
+        account_id,
+        buzz_key,
+        customer_id,
+        deal_id,
+        environment_type,
+        inventory_source,
+        data_center,
+        currency_code,
+        SUM(win_cost_micros) AS spend,
+        SUM(win_cost_micros_usd) AS spend_usd,
+        COUNT(auction_adgroup_id) AS impression,
+        SUM(clearing_price_micros) AS inventory_cost,
+        SUM(clearing_price_micros_usd) AS inventory_cost_micros_usd,
+        SUM((beeswax_fee_rate_micros * clearing_price_micros)/(100000000)) AS beeswax_fee_micros,
+        SUM((beeswax_fee_rate_micros * clearing_price_micros_usd)/(100000000)) AS beeswax_fee_micros_usd,
+        SUM(clicks) AS clicks,
+        SUM(conversions_sweep) AS conversions,
+        SUM(conversion_order_sweep) AS conversion_order,
+        SUM(conversion_value_sweep) AS conversion_value,
+        SUM(revenue_amount_micros) AS revenue_amount_micros,
+        SUM(vendor_fee_micros) AS vendor_fee_micros,
+        SUM(vendor_fee_micros_usd) AS vendor_fee_micros_usd,
+        SUM(video_plays) AS video_plays,
+        SUM(video_Q1s) AS video_Q1s,
+        SUM(video_midpoints) AS video_midpoints,
+        SUM(video_Q3s) AS video_Q3s,
+        SUM(video_completes) AS video_completes,
+        SUM(video_skips) AS video_skips,
+        SUM(CASE WHEN in_view >= 0 THEN in_view ELSE 0 END) AS viewable_impressions,
+        SUM(CASE WHEN is_measurable >= 0 THEN is_measurable ELSE 0 END) AS measurable_impressions,
+        SUM(CASE WHEN in_view_time_millis >= 0 THEN in_view_time_millis ELSE 0 END) AS viewed_time_millis,
+        viewability_vendor_name,
+        SUM(companion_clicks) AS companion_clicks,
+        SUM(companion_views) AS companion_views,
+        placement_type,
+        seat_id,
+        seat_type,
+        SUM(media_spend_micros) AS media_spend_micros,
+        SUM(media_spend_micros_usd) AS media_spend_micros_usd,
+        advertiser_id,
+        ads_txt,
+        advertiser_domain,
+        advertiser_category,
+        video_duration,
+        bid_modifier_id,
+        auction_type,
+        SUM(CASE WHEN is_invalid_measurable >= 0 THEN is_invalid_measurable ELSE 0 END) AS measurable_invalid_impressions,
+        SUM(CASE WHEN invalid_impression >= 0 THEN invalid_impression ELSE 0 END) AS invalid_impressions,
+        -- These are stored as separate dimensions in impression_details, but the product requirement is to map
+        -- them to an invalid_impression_reason_code in the reports.
+        -- NOTE: This logic assumes either that a vendor will always return only none or one of these fields with value 1
+        --      or that if they can return more than one of these fields, this ordering is the correct precedence
+        CASE WHEN invalid_impression = 1 THEN
+          CASE
+              WHEN invalid_automated_browser = 1 THEN 'automated browser'
+              WHEN invalid_incongruous_browser = 1 THEN 'incongruous browser'
+              WHEN invalid_data_center_traffic = 1 THEN 'data center traffic'
+              ELSE 'UNKNOWN'
+          END
+        ELSE NULL
+        END AS invalid_impression_reason_code,
+        invalid_impression_vendor_name,
+        flight_id
+FROM impression_details
+WHERE bid_hour::DATE BETWEEN '2010-01-01'::DATE AND '2010-01-31'::DATE
+GROUP BY
+        bid_hour,
+        buzz_key,
+        customer_id,
+        account_id,
+        campaign_id,
+        line_item_id,
+        creative_id,
+        inventory_source,
+        deal_id,
+        environment_type,
+        data_center,
+        currency_code,
+        viewability_vendor_name,
+        placement_type,
+        seat_id,
+        seat_type,
+        advertiser_id,
+        ads_txt,
+        advertiser_domain,
+        advertiser_category,
+        video_duration,
+        bid_modifier_id,
+        auction_type,
+        invalid_impression_reason_code,
+        invalid_impression_vendor_name,
+        flight_id;
+
+

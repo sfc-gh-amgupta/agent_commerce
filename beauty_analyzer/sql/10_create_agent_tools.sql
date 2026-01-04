@@ -364,7 +364,7 @@ USE SCHEMA CART_OLTP;
 -- Create a new cart session for a customer
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE CART_OLTP.TOOL_CREATE_CART_SESSION(
-    customer_id_param VARCHAR
+    customer_id VARCHAR
 )
 RETURNS VARIANT
 LANGUAGE SQL
@@ -385,7 +385,7 @@ BEGIN
         created_at
     ) VALUES (
         :new_session_id, 
-        :customer_id_param, 
+        :customer_id, 
         'active',
         0,
         0,
@@ -396,7 +396,7 @@ BEGIN
     RETURN OBJECT_CONSTRUCT(
         'success', TRUE,
         'session_id', :new_session_id,
-        'customer_id', :customer_id_param,
+        'customer_id', :customer_id,
         'status', 'active',
         'message', 'Cart session created successfully'
     )::VARIANT;
@@ -409,6 +409,11 @@ COMMENT ON PROCEDURE CART_OLTP.TOOL_CREATE_CART_SESSION(VARCHAR) IS
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_GET_CART_SESSION
 -- Get cart contents with all items
+-- ----------------------------------------------------------------------------
+-- SESSION_ID_FALLBACK_FIX (2026-01-04):
+-- Root Cause: Agent may pass customer_id or made-up session_id when real 
+--             session_id UUID is not in conversation history
+-- Fix: Use COALESCE to first try session_id lookup, then customer_id lookup.
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION CART_OLTP.TOOL_GET_CART_SESSION(session_id_param VARCHAR)
 RETURNS VARIANT
@@ -442,21 +447,33 @@ $$
         'created_at', s.created_at
     )::VARIANT
     FROM CART_OLTP.CART_SESSIONS s
-    WHERE s.session_id = session_id_param
+    WHERE s.session_id = COALESCE(
+        -- First: try to find by exact session_id match
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS WHERE session_id = session_id_param LIMIT 1),
+        -- Second: try to find most recent active cart by customer_id
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS 
+         WHERE customer_id = session_id_param AND status = 'active' 
+         ORDER BY created_at DESC LIMIT 1)
+    )
 $$;
 
 COMMENT ON FUNCTION CART_OLTP.TOOL_GET_CART_SESSION(VARCHAR) IS 
-'Get cart session with all items, quantities, prices (in cents), and totals.';
+'Get cart session with all items. Accepts session_id UUID or customer_id to find most recent active cart.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_ADD_TO_CART
 -- Add a product to the cart
 -- ----------------------------------------------------------------------------
+-- PRODUCT_ID_FALLBACK_FIX (2026-01-04):
+-- Root Cause: Agent may pass product NAME instead of UUID when UUID is not
+--             in conversation history (e.g., from previous turn's text response)
+-- Fix: Check if product_id is a valid UUID. If not, look up by product name.
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE CART_OLTP.TOOL_ADD_TO_CART(
-    session_id_param VARCHAR,
-    product_id_param VARCHAR,
-    quantity_param INT,
-    variant_id_param VARCHAR
+    session_id VARCHAR,
+    product_id VARCHAR,
+    quantity INT,
+    variant_id VARCHAR
 )
 RETURNS VARIANT
 LANGUAGE SQL
@@ -468,22 +485,65 @@ DECLARE
     v_subtotal_cents INT;
     v_product_name VARCHAR;
     v_session_subtotal INT;
+    v_resolved_product_id VARCHAR;
 BEGIN
-    -- Get product price (assuming price is in dollars, convert to cents)
+    -- Check if product_id looks like a UUID (36 chars with hyphens in right places)
+    IF (LENGTH(:product_id) = 36 
+        AND SUBSTRING(:product_id, 9, 1) = '-'
+        AND SUBSTRING(:product_id, 14, 1) = '-'
+        AND SUBSTRING(:product_id, 19, 1) = '-'
+        AND SUBSTRING(:product_id, 24, 1) = '-') THEN
+        -- It's a UUID, use directly
+        v_resolved_product_id := :product_id;
+    ELSE
+        -- It's likely a product name, look up the UUID
+        SELECT product_id INTO :v_resolved_product_id
+        FROM PRODUCTS.PRODUCTS
+        WHERE LOWER(name) = LOWER(:product_id)
+        LIMIT 1;
+        
+        -- If exact match not found, try partial match
+        IF (:v_resolved_product_id IS NULL) THEN
+            SELECT product_id INTO :v_resolved_product_id
+            FROM PRODUCTS.PRODUCTS
+            WHERE LOWER(name) LIKE '%' || LOWER(:product_id) || '%'
+            LIMIT 1;
+        END IF;
+        
+        -- If still not found, return error
+        IF (:v_resolved_product_id IS NULL) THEN
+            RETURN OBJECT_CONSTRUCT(
+                'success', FALSE,
+                'error', 'Product not found: ' || :product_id,
+                'message', 'Could not find a product matching "' || :product_id || '". Please try with the exact product name.'
+            )::VARIANT;
+        END IF;
+    END IF;
+    
+    -- Get product price using resolved product_id
     SELECT 
-        ROUND(COALESCE(sale_price, price) * 100)::INT,
+        ROUND(CURRENT_PRICE * 100)::INT,
         name
     INTO :v_unit_price_cents, :v_product_name
     FROM PRODUCTS.PRODUCTS
-    WHERE product_id = :product_id_param;
+    WHERE product_id = :v_resolved_product_id;
+    
+    -- Handle case where product not found even with valid UUID
+    IF (:v_unit_price_cents IS NULL) THEN
+        RETURN OBJECT_CONSTRUCT(
+            'success', FALSE,
+            'error', 'Product not found with ID: ' || :v_resolved_product_id,
+            'message', 'The product could not be found in our catalog.'
+        )::VARIANT;
+    END IF;
     
     -- Calculate subtotal
-    v_subtotal_cents := :v_unit_price_cents * :quantity_param;
+    v_subtotal_cents := :v_unit_price_cents * :quantity;
     
     -- Generate item ID
     new_item_id := UUID_STRING();
     
-    -- Insert cart item
+    -- Insert cart item (use resolved product_id)
     INSERT INTO CART_OLTP.CART_ITEMS (
         item_id, 
         session_id, 
@@ -496,10 +556,10 @@ BEGIN
         added_at
     ) VALUES (
         :new_item_id, 
-        :session_id_param, 
-        :product_id_param, 
-        :variant_id_param,
-        :quantity_param, 
+        :session_id, 
+        :v_resolved_product_id,
+        :variant_id,
+        :quantity, 
         :v_unit_price_cents, 
         :v_subtotal_cents,
         :v_product_name,
@@ -509,20 +569,20 @@ BEGIN
     -- Update session subtotal
     SELECT SUM(subtotal_cents) INTO :v_session_subtotal
     FROM CART_OLTP.CART_ITEMS
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     UPDATE CART_OLTP.CART_SESSIONS
     SET subtotal_cents = :v_session_subtotal,
         total_cents = :v_session_subtotal,  -- Simplified, no tax/shipping
         updated_at = CURRENT_TIMESTAMP()
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     RETURN OBJECT_CONSTRUCT(
         'success', TRUE,
         'item_id', :new_item_id,
-        'product_id', :product_id_param,
+        'product_id', :v_resolved_product_id,
         'product_name', :v_product_name,
-        'quantity', :quantity_param,
+        'quantity', :quantity,
         'unit_price_cents', :v_unit_price_cents,
         'subtotal_cents', :v_subtotal_cents,
         'message', 'Item added to cart'
@@ -531,15 +591,22 @@ END;
 $$;
 
 COMMENT ON PROCEDURE CART_OLTP.TOOL_ADD_TO_CART(VARCHAR, VARCHAR, INT, VARCHAR) IS 
-'Add a product to cart. Parameters: session_id, product_id, quantity, variant_id (optional, pass NULL if not needed).';
+'Add a product to cart. Parameters: session_id, product_id (UUID or product name), quantity, variant_id (optional, pass NULL if not needed).';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_UPDATE_CART_ITEM
 -- Update quantity of a cart item
 -- ----------------------------------------------------------------------------
+-- SESSION_SCOPED_FALLBACK_FIX (2026-01-04):
+-- Root Cause: Agent may pass product NAME instead of item_id UUID.
+--             Without session_id, lookups could affect wrong user's cart.
+-- Fix: Add session_id parameter to scope lookups to the correct cart.
+--      Use session_id/customer_id fallback (like GetCart) if needed.
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE CART_OLTP.TOOL_UPDATE_CART_ITEM(
-    item_id_param VARCHAR,
-    new_quantity_param INT
+    session_id VARCHAR,
+    item_id VARCHAR,
+    new_quantity INT
 )
 RETURNS VARIANT
 LANGUAGE SQL
@@ -550,53 +617,130 @@ DECLARE
     v_unit_price_cents INT;
     v_new_subtotal_cents INT;
     v_session_subtotal INT;
+    v_resolved_item_id VARCHAR;
+    v_product_name VARCHAR;
+    v_resolved_session_id VARCHAR;
 BEGIN
-    -- Get item details
-    SELECT session_id, unit_price_cents 
-    INTO :v_session_id, :v_unit_price_cents
+    -- First resolve the session_id (supports UUID or customer_id)
+    SELECT s.session_id INTO :v_resolved_session_id
+    FROM CART_OLTP.CART_SESSIONS s
+    WHERE s.session_id = COALESCE(
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS WHERE session_id = :session_id LIMIT 1),
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS 
+         WHERE customer_id = :session_id AND status = 'active' 
+         ORDER BY created_at DESC LIMIT 1)
+    );
+    
+    IF (:v_resolved_session_id IS NULL) THEN
+        RETURN OBJECT_CONSTRUCT(
+            'success', FALSE,
+            'error', 'Cart session not found: ' || :session_id,
+            'message', 'Could not find a cart session. Please create a cart first.'
+        )::VARIANT;
+    END IF;
+    
+    -- Check if item_id looks like a UUID (36 chars with hyphens in right places)
+    IF (LENGTH(:item_id) = 36 
+        AND SUBSTRING(:item_id, 9, 1) = '-'
+        AND SUBSTRING(:item_id, 14, 1) = '-'
+        AND SUBSTRING(:item_id, 19, 1) = '-'
+        AND SUBSTRING(:item_id, 24, 1) = '-') THEN
+        -- It's a UUID, use directly
+        v_resolved_item_id := :item_id;
+    ELSE
+        -- It's likely a product name, look up the item_id within this session
+        SELECT ci.item_id, ci.product_name
+        INTO :v_resolved_item_id, :v_product_name
+        FROM CART_OLTP.CART_ITEMS ci
+        WHERE ci.session_id = :v_resolved_session_id
+          AND LOWER(ci.product_name) = LOWER(:item_id)
+        LIMIT 1;
+        
+        -- If exact match not found, try partial match within session
+        IF (:v_resolved_item_id IS NULL) THEN
+            SELECT ci.item_id, ci.product_name
+            INTO :v_resolved_item_id, :v_product_name
+            FROM CART_OLTP.CART_ITEMS ci
+            WHERE ci.session_id = :v_resolved_session_id
+              AND LOWER(ci.product_name) LIKE '%' || LOWER(:item_id) || '%'
+            LIMIT 1;
+        END IF;
+        
+        -- If still not found, return error
+        IF (:v_resolved_item_id IS NULL) THEN
+            RETURN OBJECT_CONSTRUCT(
+                'success', FALSE,
+                'error', 'Cart item not found: ' || :item_id,
+                'message', 'Could not find "' || :item_id || '" in your cart. Please check your cart contents.'
+            )::VARIANT;
+        END IF;
+    END IF;
+    
+    -- Get item details using resolved item_id (verify it's in the right session)
+    SELECT session_id, unit_price_cents, product_name
+    INTO :v_session_id, :v_unit_price_cents, :v_product_name
     FROM CART_OLTP.CART_ITEMS
-    WHERE item_id = :item_id_param;
+    WHERE item_id = :v_resolved_item_id
+      AND session_id = :v_resolved_session_id;
+    
+    -- Handle case where item not found in this session
+    IF (:v_session_id IS NULL) THEN
+        RETURN OBJECT_CONSTRUCT(
+            'success', FALSE,
+            'error', 'Cart item not found in your cart',
+            'message', 'The item could not be found in your current cart.'
+        )::VARIANT;
+    END IF;
     
     -- Calculate new subtotal
-    v_new_subtotal_cents := :v_unit_price_cents * :new_quantity_param;
+    v_new_subtotal_cents := :v_unit_price_cents * :new_quantity;
     
     -- Update cart item
     UPDATE CART_OLTP.CART_ITEMS
-    SET quantity = :new_quantity_param,
+    SET quantity = :new_quantity,
         subtotal_cents = :v_new_subtotal_cents,
         updated_at = CURRENT_TIMESTAMP()
-    WHERE item_id = :item_id_param;
+    WHERE item_id = :v_resolved_item_id;
     
     -- Update session subtotal
     SELECT SUM(subtotal_cents) INTO :v_session_subtotal
     FROM CART_OLTP.CART_ITEMS
-    WHERE session_id = :v_session_id;
+    WHERE session_id = :v_resolved_session_id;
     
     UPDATE CART_OLTP.CART_SESSIONS
     SET subtotal_cents = :v_session_subtotal,
         total_cents = :v_session_subtotal,
         updated_at = CURRENT_TIMESTAMP()
-    WHERE session_id = :v_session_id;
+    WHERE session_id = :v_resolved_session_id;
     
     RETURN OBJECT_CONSTRUCT(
         'success', TRUE,
-        'item_id', :item_id_param,
-        'new_quantity', :new_quantity_param,
+        'session_id', :v_resolved_session_id,
+        'item_id', :v_resolved_item_id,
+        'product_name', :v_product_name,
+        'new_quantity', :new_quantity,
         'new_subtotal_cents', :v_new_subtotal_cents,
         'message', 'Cart item updated'
     )::VARIANT;
 END;
 $$;
 
-COMMENT ON PROCEDURE CART_OLTP.TOOL_UPDATE_CART_ITEM(VARCHAR, INT) IS 
-'Update the quantity of an item in the cart.';
+COMMENT ON PROCEDURE CART_OLTP.TOOL_UPDATE_CART_ITEM(VARCHAR, VARCHAR, INT) IS 
+'Update the quantity of an item in the cart. session_id can be UUID or customer_id. item_id can be UUID or product name.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_REMOVE_FROM_CART
 -- Remove an item from the cart
 -- ----------------------------------------------------------------------------
+-- SESSION_SCOPED_FALLBACK_FIX (2026-01-04):
+-- Root Cause: Agent may pass product NAME instead of item_id UUID.
+--             Without session_id, lookups could affect wrong user's cart.
+-- Fix: Add session_id parameter to scope lookups to the correct cart.
+--      Use session_id/customer_id fallback (like GetCart) if needed.
+-- ----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE CART_OLTP.TOOL_REMOVE_FROM_CART(
-    item_id_param VARCHAR
+    session_id VARCHAR,
+    item_id VARCHAR
 )
 RETURNS VARIANT
 LANGUAGE SQL
@@ -605,44 +749,116 @@ $$
 DECLARE
     v_session_id VARCHAR;
     v_session_subtotal INT;
+    v_resolved_item_id VARCHAR;
+    v_product_name VARCHAR;
+    v_resolved_session_id VARCHAR;
 BEGIN
-    -- Get session ID before deleting
-    SELECT session_id INTO :v_session_id
+    -- First resolve the session_id (supports UUID or customer_id)
+    SELECT s.session_id INTO :v_resolved_session_id
+    FROM CART_OLTP.CART_SESSIONS s
+    WHERE s.session_id = COALESCE(
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS WHERE session_id = :session_id LIMIT 1),
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS 
+         WHERE customer_id = :session_id AND status = 'active' 
+         ORDER BY created_at DESC LIMIT 1)
+    );
+    
+    IF (:v_resolved_session_id IS NULL) THEN
+        RETURN OBJECT_CONSTRUCT(
+            'success', FALSE,
+            'error', 'Cart session not found: ' || :session_id,
+            'message', 'Could not find a cart session. Please create a cart first.'
+        )::VARIANT;
+    END IF;
+    
+    -- Check if item_id looks like a UUID (36 chars with hyphens in right places)
+    IF (LENGTH(:item_id) = 36 
+        AND SUBSTRING(:item_id, 9, 1) = '-'
+        AND SUBSTRING(:item_id, 14, 1) = '-'
+        AND SUBSTRING(:item_id, 19, 1) = '-'
+        AND SUBSTRING(:item_id, 24, 1) = '-') THEN
+        -- It's a UUID, use directly
+        v_resolved_item_id := :item_id;
+    ELSE
+        -- It's likely a product name, look up the item_id within this session
+        SELECT ci.item_id, ci.product_name
+        INTO :v_resolved_item_id, :v_product_name
+        FROM CART_OLTP.CART_ITEMS ci
+        WHERE ci.session_id = :v_resolved_session_id
+          AND LOWER(ci.product_name) = LOWER(:item_id)
+        LIMIT 1;
+        
+        -- If exact match not found, try partial match within session
+        IF (:v_resolved_item_id IS NULL) THEN
+            SELECT ci.item_id, ci.product_name
+            INTO :v_resolved_item_id, :v_product_name
+            FROM CART_OLTP.CART_ITEMS ci
+            WHERE ci.session_id = :v_resolved_session_id
+              AND LOWER(ci.product_name) LIKE '%' || LOWER(:item_id) || '%'
+            LIMIT 1;
+        END IF;
+        
+        -- If still not found, return error
+        IF (:v_resolved_item_id IS NULL) THEN
+            RETURN OBJECT_CONSTRUCT(
+                'success', FALSE,
+                'error', 'Cart item not found: ' || :item_id,
+                'message', 'Could not find "' || :item_id || '" in your cart. Please check your cart contents.'
+            )::VARIANT;
+        END IF;
+    END IF;
+    
+    -- Get session ID and product name before deleting (verify it's in the right session)
+    SELECT session_id, product_name 
+    INTO :v_session_id, :v_product_name
     FROM CART_OLTP.CART_ITEMS
-    WHERE item_id = :item_id_param;
+    WHERE item_id = :v_resolved_item_id
+      AND session_id = :v_resolved_session_id;
+    
+    -- Handle case where item not found in this session
+    IF (:v_session_id IS NULL) THEN
+        RETURN OBJECT_CONSTRUCT(
+            'success', FALSE,
+            'error', 'Cart item not found in your cart',
+            'message', 'The item could not be found in your current cart.'
+        )::VARIANT;
+    END IF;
     
     -- Delete the item
     DELETE FROM CART_OLTP.CART_ITEMS 
-    WHERE item_id = :item_id_param;
+    WHERE item_id = :v_resolved_item_id
+      AND session_id = :v_resolved_session_id;
     
     -- Update session subtotal
     SELECT COALESCE(SUM(subtotal_cents), 0) INTO :v_session_subtotal
     FROM CART_OLTP.CART_ITEMS
-    WHERE session_id = :v_session_id;
+    WHERE session_id = :v_resolved_session_id;
     
     UPDATE CART_OLTP.CART_SESSIONS
     SET subtotal_cents = :v_session_subtotal,
         total_cents = :v_session_subtotal,
         updated_at = CURRENT_TIMESTAMP()
-    WHERE session_id = :v_session_id;
+    WHERE session_id = :v_resolved_session_id;
     
     RETURN OBJECT_CONSTRUCT(
         'success', TRUE,
-        'removed_item_id', :item_id_param,
+        'session_id', :v_resolved_session_id,
+        'removed_item_id', :v_resolved_item_id,
+        'product_name', :v_product_name,
         'message', 'Item removed from cart'
     )::VARIANT;
 END;
 $$;
 
-COMMENT ON PROCEDURE CART_OLTP.TOOL_REMOVE_FROM_CART(VARCHAR) IS 
-'Remove an item from the cart.';
+COMMENT ON PROCEDURE CART_OLTP.TOOL_REMOVE_FROM_CART(VARCHAR, VARCHAR) IS 
+'Remove an item from the cart. session_id can be UUID or customer_id. item_id can be UUID or product name.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_SUBMIT_ORDER
 -- Complete the order
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE PROCEDURE CART_OLTP.TOOL_SUBMIT_ORDER(
-    session_id_param VARCHAR
+    session_id VARCHAR
 )
 RETURNS VARIANT
 LANGUAGE SQL
@@ -663,12 +879,12 @@ BEGIN
         total_cents
     INTO :v_customer_id, :v_subtotal_cents, :v_total_cents
     FROM CART_OLTP.CART_SESSIONS
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     -- Count items
     SELECT COUNT(*) INTO :v_item_count
     FROM CART_OLTP.CART_ITEMS
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     -- Generate order ID and number
     new_order_id := UUID_STRING();
@@ -692,7 +908,7 @@ BEGIN
     ) VALUES (
         :new_order_id, 
         :v_order_number,
-        :session_id_param,
+        :session_id,
         :v_customer_id, 
         'confirmed',
         :v_subtotal_cents,
@@ -732,13 +948,13 @@ BEGIN
         product_image_url,
         CURRENT_TIMESTAMP()
     FROM CART_OLTP.CART_ITEMS
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     -- Update session status to completed
     UPDATE CART_OLTP.CART_SESSIONS
     SET status = 'completed',
         updated_at = CURRENT_TIMESTAMP()
-    WHERE session_id = :session_id_param;
+    WHERE session_id = :session_id;
     
     RETURN OBJECT_CONSTRUCT(
         'success', TRUE,

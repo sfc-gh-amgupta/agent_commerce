@@ -1,0 +1,112 @@
+{
+  "format-version" : 2,
+  "table-uuid" : "6de30d6d-8c85-4f81-82f7-d5c89294178c",
+  "location" : "s3://amgupta-interop-demo-dbrix-delta/users/build2025/kirsten_childs_demo83/HR_DB/DBRIX_DELTADIRECT_DATA/HR_EMPLOYEE_FACT_SM.rGWdQaTB/",
+  "last-sequence-number" : 2,
+  "last-updated-ms" : 1761231326917,
+  "last-column-id" : 8,
+  "current-schema-id" : 0,
+  "schemas" : [ {
+    "type" : "struct",
+    "schema-id" : 0,
+    "fields" : [ {
+      "id" : 1,
+      "name" : "HR_FACT_ID",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 2,
+      "name" : "DATE",
+      "required" : false,
+      "type" : "date"
+    }, {
+      "id" : 3,
+      "name" : "EMPLOYEE_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 4,
+      "name" : "DEPARTMENT_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 5,
+      "name" : "JOB_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 6,
+      "name" : "LOCATION_KEY",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    }, {
+      "id" : 7,
+      "name" : "SALARY",
+      "required" : false,
+      "type" : "decimal(10, 2)"
+    }, {
+      "id" : 8,
+      "name" : "ATTRITION_FLAG",
+      "required" : false,
+      "type" : "decimal(38, 0)"
+    } ]
+  } ],
+  "default-spec-id" : 0,
+  "partition-specs" : [ {
+    "spec-id" : 0,
+    "fields" : [ ]
+  } ],
+  "last-partition-id" : 999,
+  "default-sort-order-id" : 0,
+  "sort-orders" : [ {
+    "order-id" : 0,
+    "fields" : [ ]
+  } ],
+  "properties" : {
+    "format-version" : "2"
+  },
+  "current-snapshot-id" : 1822726935715098308,
+  "snapshots" : [ {
+    "sequence-number" : 1,
+    "snapshot-id" : 4448013000190929399,
+    "timestamp-ms" : 1761231326917,
+    "manifest-list" : "s3://amgupta-interop-demo-dbrix-delta/users/build2025/kirsten_childs_demo83/HR_DB/DBRIX_DELTADIRECT_DATA/HR_EMPLOYEE_FACT_SM.rGWdQaTB/metadata/snap-1761231326917000000-03d316db-5e2d-48f9-8712-b7015561704b.avro",
+    "schema-id" : 0,
+    "summary" : {
+      "added-data-files" : "1",
+      "added-records" : "3458",
+      "total-files-size" : "30208",
+      "manifests-kept" : "0",
+      "added-files-size" : "30208",
+      "total-records" : "3458",
+      "manifests-created" : "1",
+      "total-data-files" : "1",
+      "manifests-replaced" : "0"
+    }
+  }, {
+    "sequence-number" : 2,
+    "snapshot-id" : 1822726935715098308,
+    "timestamp-ms" : 1761231326917,
+    "manifest-list" : "s3://amgupta-interop-demo-dbrix-delta/users/build2025/kirsten_childs_demo83/HR_DB/DBRIX_DELTADIRECT_DATA/HR_EMPLOYEE_FACT_SM.rGWdQaTB/metadata/snap-1761231326917000000-9e8f9c03-bb8b-49f0-91d4-23a1e345c47d.avro",
+    "schema-id" : 0,
+    "summary" : {
+      "total-data-files" : "1",
+      "manifests-created" : "1",
+      "total-records" : "3458",
+      "added-files-size" : "30208",
+      "manifests-kept" : "0",
+      "operation" : "append",
+      "total-files-size" : "30208",
+      "added-records" : "3458",
+      "added-data-files" : "1",
+      "manifests-replaced" : "0"
+    }
+  } ],
+  "snapshot-log" : [ {
+    "snapshot-id" : 4448013000190929399,
+    "timestamp-ms" : 1761231326917
+  }, {
+    "snapshot-id" : 1822726935715098308,
+    "timestamp-ms" : 1761231326917
+  } ]
+}

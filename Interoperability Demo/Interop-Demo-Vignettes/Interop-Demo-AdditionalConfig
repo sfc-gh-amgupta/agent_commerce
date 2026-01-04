@@ -1,0 +1,15 @@
+/* ===================================================================
+ * SNOWFLAKE INTEROPERABLE AI READY DATA PRODUCTS DEMO
+ * 
+ * Author: Amit Gupta
+ * Last Updated: October 15, 2025
+ * Demo: Available at Interoperable Data Mesh Webinar - https://www.snowflake.com/en/webinars/demo/unlocking-ai-with-an-interoperable-data-mesh-2025-10-16/
+ * =================================================================== */
+
+
+-- Create user for PROGRAMMATIC access. MFA Enabled user eg John will not work
+create user interop_user;
+alter user set default_role = accountadmin;
+alter user set default_warehouse = snow_intelligence_demo_wh ;
+ALTER USER interop_user SET RSA_PUBLIC_KEY='MIIBIjANBgkqhkiG9w0BAQEFAAOCAQ8AMIIBCgKCAQEAqRH9fnXzdkZ8kGaWQ0latV3ForMUvFJAwhW3wcq1sqiX6XxLnjWQn3rjmUBiQKrDBL+GGMCUxk5tw3bDEmN3tHQS9FeYGbZXUuS1KfE27gIn3kcHRXvIeWdMAqfxoWvJxi0hLwo91tzvOxFLucGbxBqG5bOTGdw8P4LpRqcOQp9kA86dAjxtXmvLGGS5dgBUU+NPxq3YC7EjkwConkJj3KHv3WaU6pWn95ebtT6hMRg2xCjfy6fWsCpZfrRabH/JaPcYxG+spIUo5uw1vW7U6vW8TkyfZtdZHqP9OArvC432z/HvqKcT+IONffr0AX962OybDjkqFGRCyd111uzOIwIDAQAB';
+create warehouse interopdemo_setup_wh;

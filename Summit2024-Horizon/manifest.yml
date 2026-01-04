@@ -1,0 +1,7 @@
+title: "MyListing"
+subtitle: "Subtitle for MyListing"
+description: "Description for MyListing"
+listing_terms:
+   type: "STANDARD"
+targets:
+    accounts: ["SFSENORTHAMERICA.AMGUPTA_REPLICATE_TGT"]

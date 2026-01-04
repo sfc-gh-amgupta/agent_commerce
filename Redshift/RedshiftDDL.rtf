@@ -1,0 +1,316 @@
+{\rtf1\ansi\ansicpg1252\cocoartf1561\cocoasubrtf600
+{\fonttbl\f0\fswiss\fcharset0 Helvetica;}
+{\colortbl;\red255\green255\blue255;}
+{\*\expandedcolortbl;;}
+\margl1440\margr1440\vieww10800\viewh8400\viewkind0
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+
+\f0\fs24 \cf0 /* \
+Drop table impression_details;\
+Drop table bid_request;\
+Drop table attributed_conversions;\
+Drop table pending_conversions;\
+*/\
+\
+CREATE TABLE impression_details\
+\pard\tx720\tx1440\tx2160\tx2880\tx3600\tx4320\tx5040\tx5760\tx6480\tx7200\tx7920\tx8640\pardirnatural\partightenfactor0
+\cf0 (\
+  account_id                           BIGINT NOT NULL ,\
+  ad_position                          VARCHAR(255) NOT NULL DEFAULT '0' ,\
+  app_bundle                           VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  app_id                               VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  app_name                             VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  auction_adgroup_id                   VARCHAR(255) NOT NULL ,\
+  auction_id                           VARCHAR(255) NOT NULL,\
+  beeswax_fee_rate_micros              BIGINT NOT NULL DEFAULT 0 ,\
+  bid_hour                             TIMESTAMP NOT NULL ,\
+  bid_price_micros_usd                 BIGINT NOT NULL DEFAULT 0 ,\
+  bid_reduction_rate_micros            BIGINT NOT NULL ,\
+  bid_time                             TIMESTAMP NOT NULL ,\
+  buzz_key                             VARCHAR(255) NOT NULL ,\
+  campaign_id                          BIGINT NOT NULL ,\
+  campaign_revenue_amount_micros       BIGINT DEFAULT -1 ,\
+  campaign_revenue_type                VARCHAR(255) DEFAULT 'UNKNOWN' ,\
+  category                             VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  clearing_price_micros_usd            BIGINT NOT NULL DEFAULT 0 ,\
+  clicks                               BIGINT NOT NULL DEFAULT 0 ,\
+  content_coppa_flag                   INTEGER NOT NULL  DEFAULT -1 ,\
+  content_language                     VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  content_rating                       VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  conversions                          INTEGER NOT NULL DEFAULT 0 ,\
+  conversion_order                     NUMERIC(18,6) NOT NULL DEFAULT 0 ,\
+  conversion_value                     NUMERIC(18,6) NOT NULL DEFAULT 0 ,\
+  create_time                          TIMESTAMP DEFAULT ('now'::text)::TIMESTAMP WITHOUT TIME ZONE ,\
+  creative_id                          BIGINT NOT NULL DEFAULT 0 ,\
+  customer_id                          BIGINT NOT NULL DEFAULT 0 ,\
+  deal_id                              VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  domain                               VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  environment_type                     VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  exchange_discrepancy_rate_micros     BIGINT NOT NULL DEFAULT 0 ,\
+  geo_city                             VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  geo_country                          VARCHAR(255) NOT NULL DEFAULT '000' ,\
+  geo_metro                            VARCHAR(255) NOT NULL DEFAULT '000' ,\
+  geo_region                           VARCHAR(255) NOT NULL DEFAULT '000/00' ,\
+  geo_zip                              VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  has_frequency_cap                    SMALLINT NOT NULL DEFAULT 0 ,\
+  inventory_interstitial               INTEGER NOT NULL DEFAULT 0 ,\
+  inventory_source                     VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  inventory_source_relationship        VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  ip_address                           VARCHAR(255) NOT NULL DEFAULT '0.0.0.0' ,\
+  ip_range                             VARCHAR(255) NOT NULL DEFAULT '0.0.0.0' ,\
+  line_item_id                         BIGINT NOT NULL ,\
+  line_item_revenue_amount_micros      BIGINT DEFAULT -1 ,\
+  line_item_revenue_type               VARCHAR(255) DEFAULT 'UNKNOWN' ,\
+  placement                            VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_bandwidth                   VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_browser                     VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_browser_version             VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_carrier                     VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_device_didmd5               VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_didsha1              VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_dpidmd5              VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_dpidsha1             VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_idfa                 VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_ifa                  VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_make                 VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_device_model                VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_device_screen_size          VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  platform_device_type                 VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_js                          INTEGER NOT NULL DEFAULT -1 ,\
+  platform_os                          VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  platform_os_version                  VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  pre_reduction_bid_price_micros_usd   BIGINT NOT NULL DEFAULT 0 ,\
+  revenue_amount_micros                BIGINT NOT NULL DEFAULT 0 ,\
+  segment_id                           VARCHAR(600) NOT NULL DEFAULT '0' ,\
+  segment_user_id                      INTEGER NOT NULL DEFAULT 0 ,\
+  site_id                              VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  site_name                            VARCHAR(255) NOT NULL DEFAULT 'UNKNOWN' ,\
+  time_of_week                         INTEGER NOT NULL DEFAULT -1 ,\
+  user_id                              VARCHAR(255) DEFAULT '' ,\
+  video_boxing_allowed                 INTEGER NOT NULL DEFAULT -1 ,\
+  video_companion_required             INTEGER NOT NULL DEFAULT 0 ,\
+  video_completes                      BIGINT NOT NULL DEFAULT 0 ,\
+  video_midpoints                      BIGINT NOT NULL DEFAULT 0 ,\
+  video_playback_method                VARCHAR(255) NOT NULL DEFAULT '-1' ,\
+  video_player_size                    VARCHAR(255) NOT NULL DEFAULT 'N/A' ,\
+  video_plays                          BIGINT NOT NULL DEFAULT 0 ,\
+  video_q1s                            BIGINT NOT NULL DEFAULT 0 ,\
+  video_q3s                            BIGINT NOT NULL DEFAULT 0 ,\
+  video_skips                          BIGINT NOT NULL DEFAULT 0 ,\
+  video_start_delay                    INTEGER NOT NULL DEFAULT -1 ,\
+  win_cost_micros_usd                  BIGINT NOT NULL ,\
+  advertiser_id                        BIGINT NOT NULL DEFAULT 0 ,\
+  vendor_fee_micros_usd                BIGINT DEFAULT 0 ,\
+  test                                 BOOLEAN DEFAULT FALSE ,\
+  placement_type                       VARCHAR(255) DEFAULT 'UNKNOWN' ,\
+  geo_lat                              VARCHAR(50) DEFAULT 'UNKNOWN' ,\
+  geo_lon                              VARCHAR(50) DEFAULT 'UNKNOWN' ,\
+  total_cpm_vendor_fee_amount_micros   BIGINT DEFAULT 0 ,\
+  total_percent_vendor_fee_amount_micros  BIGINT DEFAULT 0 ,\
+  bid_time_epoch_in_usecs              BIGINT DEFAULT 0 ,\
+  model_id                             VARCHAR(255) DEFAULT 'UNKNOWN' ,\
+  model_params                         VARCHAR(600) DEFAULT '' ,\
+  data_center                          VARCHAR(50) DEFAULT 'UNKNOWN' ,\
+  billing_version                      VARCHAR(50) DEFAULT 'UNKNOWN' ,\
+  in_view                              SMALLINT DEFAULT -1 ,\
+  is_measurable                        SMALLINT DEFAULT -1 ,\
+  in_view_time_millis                  BIGINT DEFAULT -1 ,\
+  bidding_strategy_id                  VARCHAR(255) DEFAULT '' ,\
+  bidding_strategy_params              VARCHAR(255) DEFAULT '' ,\
+  exchange_predicted_view_rate         NUMERIC(18, 6) DEFAULT -1 ,\
+  rx_timestamp                         TIMESTAMP ,\
+  battrs                               VARCHAR(600) DEFAULT '' ,\
+  exchange_auction_id                  VARCHAR(255) DEFAULT '' ,\
+  rewarded                             SMALLINT DEFAULT -1 ,\
+  currency_rate                        DECIMAL(18,10) DEFAULT 1.0 ,\
+  currency_code                        VARCHAR(10) DEFAULT 'USD' ,\
+  clearing_price_micros                BIGINT DEFAULT 0 ,\
+  win_cost_micros                      BIGINT DEFAULT 0 ,\
+  bid_price_micros                     BIGINT DEFAULT 0 ,\
+  vendor_fee_micros                    BIGINT DEFAULT 0 ,\
+  viewability_vendor_name              VARCHAR(10) DEFAULT '' ,\
+  conversion_update_time               TIMESTAMP DEFAULT '2014-07-01'::TIMESTAMP ,\
+  companion_clicks                     SMALLINT DEFAULT 0 ,\
+  companion_views                      SMALLINT DEFAULT 0 ,\
+  banner_width                         INTEGER DEFAULT -1 ,\
+  banner_height                        INTEGER DEFAULT -1 ,\
+  conversions_sweep                    INTEGER DEFAULT 0 ,\
+  conversion_order_sweep               NUMERIC(18,6) DEFAULT 0 ,\
+  conversion_value_sweep               NUMERIC(18,6) DEFAULT 0 ,\
+  bid_floor_micros                     BIGINT DEFAULT 0 ,\
+  bid_floor_currency                   VARCHAR(10) DEFAULT 'USD' ,\
+  seat_id                              VARCHAR(80) DEFAULT '' ,\
+  seat_type                            VARCHAR(20) DEFAULT '' ,\
+  media_spend_micros                   BIGINT DEFAULT 0 ,\
+  media_spend_micros_usd               BIGINT DEFAULT 0 ,\
+  display_manager                      VARCHAR(255) DEFAULT '' ,\
+  display_manager_ver                  VARCHAR(255) DEFAULT '' ,\
+  exchange_device_make                 VARCHAR(255) DEFAULT '' ,\
+  exchange_device_model                VARCHAR(255) DEFAULT '' ,\
+  line_item_alt_id                     VARCHAR(255) DEFAULT '' ,\
+  bid_req_join_status                  SMALLINT DEFAULT 0 ,\
+  bid_resp_join_status                 SMALLINT DEFAULT 0 ,\
+  user_id_type                         VARCHAR(20) DEFAULT '' ,\
+  page_url                             VARCHAR(255) DEFAULT '' ,\
+  auction_type                         INTEGER DEFAULT -1 ,\
+  publisher_id                         VARCHAR(255) DEFAULT '' ,\
+  ads_txt                              VARCHAR(50) DEFAULT '' ,\
+  bid_modifier_id                      BIGINT ,\
+  bid_modifier_multipliers_product     NUMERIC(18,6) DEFAULT 1.0 ,\
+  advertiser_domain                    VARCHAR(255) DEFAULT '' ,\
+  advertiser_category                  VARCHAR(255) DEFAULT '' ,\
+  video_duration                       INTEGER DEFAULT -1 ,\
+  matched_user_groups                  VARCHAR(255) DEFAULT '' ,\
+  ipv6_address                         VARCHAR(255) NOT NULL DEFAULT '0:0:0:0:0:0:0:0' ,\
+  is_invalid_measurable                SMALLINT DEFAULT -1 ,\
+  invalid_impression                   SMALLINT DEFAULT -1 ,\
+  invalid_automated_browser            SMALLINT DEFAULT -1 ,\
+  invalid_incongruous_browser          SMALLINT DEFAULT -1 ,\
+  invalid_data_center_traffic          SMALLINT DEFAULT -1 ,\
+  invalid_impression_vendor_name       VARCHAR(10) ,\
+  flight_id                            INTEGER DEFAULT 0 ,\
+  hexbid_model_id                      VARCHAR(255) DEFAULT 'UNKNOWN' ,\
+  hexbid_model_params                  VARCHAR(600) DEFAULT '' ,\
+  user_id_hashed                       VARCHAR(255) DEFAULT '' ,\
+  ip_address_hashed                    VARCHAR(255) DEFAULT '' ,\
+  ipv6_address_hashed                  VARCHAR(255) DEFAULT '' ,\
+  is_gdpr                              SMALLINT DEFAULT -1 ,\
+  gdpr_consent_string                  VARCHAR(255) DEFAULT '' ,\
+  targeted_segments                    VARCHAR(600) DEFAULT '' \
+);\
+ALTER TABLE IMPRESSION_DETAILS ADD PRIMARY KEY (AUCTION_ID);\
+\
+\
+CREATE TABLE pending_conversions\
+(\
+    account_id          BIGINT ,\
+    advertiser_id       BIGINT ,\
+    auction_id          VARCHAR(255) ,\
+    buzz_key            VARCHAR(255) ,\
+    conversion_id       VARCHAR(255) ,\
+    view_window         INT ,\
+    click_window        INT ,\
+    rx_timestamp        TIMESTAMP ,\
+    tag_id              INT ,\
+    user_id             VARCHAR(255) ,\
+    conversion_order    INT ,\
+    value               DECIMAL(18, 6) ,\
+    ord                 VARCHAR(255) ,\
+    conversion_type     VARCHAR(20) ,\
+    user_id_hashed      VARCHAR(255) \
+);\
+\
+CREATE TABLE bid_request\
+(\
+  ad_position                     VARCHAR(255) ,\
+  app_bundle                      VARCHAR(255) ,\
+  app_id                          VARCHAR(255) ,\
+  app_name                        VARCHAR(255) ,\
+  auction_id                      VARCHAR(255) NOT NULL ,\
+  bid_time                        TIMESTAMP ,\
+  category                        VARCHAR(255) ,\
+  content_coppa_flag              BOOLEAN ,\
+  content_language                VARCHAR(255) ,\
+  content_rating                  VARCHAR(255) ,\
+  domain                          VARCHAR(255) ,\
+  environment_type                VARCHAR(255) ,\
+  geo_city                        VARCHAR(255) ,\
+  geo_country                     VARCHAR(255) ,\
+  geo_metro                       VARCHAR(255) ,\
+  geo_region                      VARCHAR(255) ,\
+  geo_zip                         VARCHAR(255) ,\
+  inventory_interstitial          BOOLEAN ,\
+  inventory_source                VARCHAR(255) ,\
+  inventory_source_relationship   VARCHAR(255) ,\
+  ip_address                      VARCHAR(255) ,\
+  ip_range                        VARCHAR(255) ,\
+  placement                       VARCHAR(255) ,\
+  platform_bandwidth              VARCHAR(255) ,\
+  platform_browser                VARCHAR(255) ,\
+  platform_browser_version        VARCHAR(255) ,\
+  platform_carrier                VARCHAR(255) ,\
+  platform_device_didmd5          VARCHAR(255) ,\
+  platform_device_didsha1         VARCHAR(255) ,\
+  platform_device_dpidmd5         VARCHAR(255) ,\
+  platform_device_dpidsha1        VARCHAR(255) ,\
+  platform_device_idfa            VARCHAR(255) ,\
+  platform_device_ifa             VARCHAR(255) ,\
+  platform_device_make            VARCHAR(255) ,\
+  platform_device_model           VARCHAR(255) ,\
+  platform_device_screen_size     VARCHAR(255) ,\
+  platform_device_type            VARCHAR(255) ,\
+  platform_js                     BOOLEAN ,\
+  platform_os                     VARCHAR(255) ,\
+  platform_os_version             VARCHAR(255) ,\
+  segment_id                      VARCHAR(600) ,\
+  segment_user_id                 BOOLEAN,\
+  site_id                         VARCHAR(255) ,\
+  site_name                       VARCHAR(255) ,\
+  time_of_week                    INTEGER ,\
+  user_id                         VARCHAR(255) ,\
+  video_boxing_allowed            BOOLEAN ,\
+  video_companion_required        BOOLEAN ,\
+  video_playback_method           VARCHAR(255) ,\
+  video_player_size               VARCHAR(255) ,\
+  video_start_delay               INTEGER ,\
+  test                            BOOLEAN ,\
+  placement_type                  VARCHAR(255) ,\
+  geo_lat                         VARCHAR(50) ,\
+  geo_lon                         VARCHAR(50) ,\
+  video_min_Duration              INTEGER ,\
+  video_max_duration              INTEGER ,\
+  video_player_width              INTEGER ,\
+  video_player_height             INTEGER ,\
+  banner_width                    INTEGER ,\
+  banner_height                   INTEGER ,\
+  banner_width_max                INTEGER ,\
+  banner_height_max               INTEGER ,\
+  banner_width_min                INTEGER ,\
+  banner_height_min               INTEGER ,\
+  dnt                             INTEGER ,\
+  geo_type                        VARCHAR(20) ,\
+  bid_time_epoch_in_usecs         BIGINT ,\
+  page_url                        VARCHAR(255) ,\
+  exchange_predicted_view_rate    NUMERIC(18, 6) ,\
+  available_deal_ids              VARCHAR(255) ,\
+  battrs                          VARCHAR(600) ,\
+  exchange_auction_id             VARCHAR(255) ,\
+  rewarded                        SMALLINT ,\
+  ua                              VARCHAR(255) ,\
+  bid_floor_micros                BIGINT DEFAULT 0 ,\
+  bid_floor_currency              VARCHAR(10) DEFAULT 'USD' ,\
+  display_manager                 VARCHAR(255) ,\
+  display_manager_ver             VARCHAR(255) ,\
+  exchange_device_make            VARCHAR(255) ,\
+  exchange_device_model           VARCHAR(255) ,\
+  user_id_type                    VARCHAR(20) ,\
+  auction_type                    INTEGER ,\
+  publisher_id                    VARCHAR(255) ,\
+  ads_txt                         VARCHAR(50) ,\
+  matched_user_groups             VARCHAR(255) ,\
+  ipv6_address                    VARCHAR(255) ,\
+  user_id_hashed                  VARCHAR(255) ,\
+  ip_address_hashed               VARCHAR(255) ,\
+  ipv6_address_hashed             VARCHAR(255) ,\
+  is_gdpr                         SMALLINT ,\
+  gdpr_consent_string             VARCHAR(255) \
+ \
+);\
+ALTER TABLE BID_REQUEST ADD PRIMARY KEY (AUCTION_ID);\
+\
+CREATE TABLE attributed_conversions\
+(\
+  "order"         INT ,\
+  account_id      BIGINT ,\
+  advertiser_id   BIGINT ,\
+  conversion_id   VARCHAR(255) ,\
+  ord             VARCHAR(255) ,\
+  rx_timestamp    TIMESTAMP ,\
+  tag_id          INT ,\
+  value           DECIMAL(18,6) ,\
+  auction_id      VARCHAR(255) ,\
+  bid_time        TIMESTAMP NOT NULL ,\
+  buzz_key        VARCHAR(255) ,\
+  user_id         VARCHAR(255) \
+);\
+}
