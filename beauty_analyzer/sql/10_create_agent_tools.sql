@@ -119,133 +119,174 @@ COMMENT ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) IS
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_IDENTIFY_CUSTOMER
 -- Match face embedding to known customers using vector search
+-- Returns OBJECT with {success: true, matches: [...]} for Cortex Agent
+-- IMPORTANT: Accepts VARCHAR (JSON string) instead of ARRAY because Cortex Agent
+--            has issues passing ARRAY type parameters to functions
 -- ----------------------------------------------------------------------------
 USE SCHEMA CUSTOMERS;
 
+-- Drop old function with ARRAY signature to avoid ambiguity
+DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(ARRAY, FLOAT, INT);
+
 CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(
-    query_embedding ARRAY
+    query_embedding_json VARCHAR,
+    match_threshold FLOAT DEFAULT 0.6,
+    max_results INT DEFAULT 5
 )
-RETURNS TABLE (
-    customer_id VARCHAR,
-    first_name VARCHAR,
-    last_name VARCHAR,
-    email VARCHAR,
-    distance FLOAT,
-    match_confidence FLOAT
-)
+RETURNS OBJECT
 LANGUAGE SQL
 AS
 $$
-    SELECT 
-        c.customer_id,
-        c.first_name,
-        c.last_name,
-        c.email,
-        VECTOR_L2_DISTANCE(e.embedding, query_embedding::VECTOR(FLOAT, 128)) AS distance,
-        GREATEST(0, 1 - VECTOR_L2_DISTANCE(e.embedding, query_embedding::VECTOR(FLOAT, 128))) AS match_confidence
-    FROM CUSTOMERS.CUSTOMER_FACE_EMBEDDINGS e
-    JOIN CUSTOMERS.CUSTOMERS c ON e.customer_id = c.customer_id
-    WHERE e.is_primary = TRUE
-    ORDER BY distance ASC
-    LIMIT 5
+    -- Parse JSON string to array, then cast to vector for distance calculation
+    -- Agent passes embedding as JSON string like "[0.1, 0.2, ...]"
+    SELECT OBJECT_CONSTRUCT(
+        'success', TRUE,
+        'matches', COALESCE(ARRAY_AGG(
+            OBJECT_CONSTRUCT(
+                'customer_id', customer_id,
+                'first_name', first_name,
+                'last_name', last_name,
+                'email', email,
+                'loyalty_tier', loyalty_tier,
+                'points_balance', points_balance,
+                'distance', distance,
+                'match_confidence', match_confidence
+            )
+        ), ARRAY_CONSTRUCT())
+    )
+    FROM (
+        SELECT 
+            c.customer_id,
+            c.first_name,
+            c.last_name,
+            c.email,
+            c.loyalty_tier,
+            c.points_balance,
+            ROUND(VECTOR_L2_DISTANCE(
+                e.embedding, 
+                PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)
+            ), 4) AS distance,
+            -- Confidence: distance < 0.6 = same person (dlib threshold)
+            -- Map distance 0-1.5 to confidence 1-0
+            ROUND(GREATEST(0, LEAST(1, 1 - (VECTOR_L2_DISTANCE(
+                e.embedding, 
+                PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)
+            ) / 1.5))), 3) AS match_confidence
+        FROM CUSTOMERS.CUSTOMER_FACE_EMBEDDINGS e
+        JOIN CUSTOMERS.CUSTOMERS c ON e.customer_id = c.customer_id
+        WHERE e.is_primary = TRUE
+        ORDER BY distance ASC
+        LIMIT 5
+    )
 $$;
 
-COMMENT ON FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(ARRAY) IS 
-'Identify customer by matching face embedding (128-dim array) against stored embeddings. Returns top 5 matching customers with confidence scores. Use embedding from TOOL_ANALYZE_FACE.';
+COMMENT ON FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(VARCHAR, FLOAT, INT) IS 
+'Identify customer by matching face embedding against stored embeddings. Pass embedding as JSON string (e.g., "[0.1, 0.2, ...]"). Returns top 5 matching customers with confidence scores, loyalty tier, and points.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_MATCH_PRODUCTS
 -- Color matching using Euclidean RGB distance
+-- IMPORTANT: Returns ARRAY (scalar function) for Cortex Agent compatibility
+-- Table functions (UDTF) are NOT supported by Cortex Agent generic tools
 -- ----------------------------------------------------------------------------
 USE SCHEMA PRODUCTS;
 
+-- Drop existing table function to avoid overload ambiguity
+DROP FUNCTION IF EXISTS PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR, VARCHAR, INT);
+
 CREATE OR REPLACE FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(
-    target_hex VARCHAR
+    target_hex VARCHAR,
+    category_filter VARCHAR DEFAULT NULL,
+    limit_results INT DEFAULT 10
 )
-RETURNS TABLE (
-    product_id VARCHAR,
-    name VARCHAR,
-    brand VARCHAR,
-    category VARCHAR,
-    swatch_hex VARCHAR,
-    color_distance FLOAT
-)
+RETURNS ARRAY
 LANGUAGE SQL
 AS
 $$
-    -- Color distance using Euclidean RGB
-    WITH target_rgb AS (
+    SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
+        'product_id', product_id,
+        'name', name,
+        'brand', brand,
+        'category', category,
+        'swatch_hex', swatch_hex,
+        'color_distance', color_distance,
+        'price', price,
+        'image_url', image_url
+    ))
+    FROM (
         SELECT 
-            TO_NUMBER(SUBSTR(target_hex, 2, 2), 'XX') AS r,
-            TO_NUMBER(SUBSTR(target_hex, 4, 2), 'XX') AS g,
-            TO_NUMBER(SUBSTR(target_hex, 6, 2), 'XX') AS b
+            p.product_id,
+            p.name,
+            p.brand,
+            p.category,
+            pv.color_hex AS swatch_hex,
+            ROUND(SQRT(
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 2, 2), 'XX'), 2) +
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 4, 2), 'XX'), 2) +
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 6, 2), 'XX'), 2)
+            ), 2) AS color_distance,
+            p.current_price AS price,
+            pm.url AS image_url
+        FROM PRODUCTS.PRODUCTS p
+        JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
+        LEFT JOIN PRODUCTS.PRODUCT_MEDIA pm ON p.product_id = pm.product_id AND pm.is_primary = TRUE
+        WHERE pv.color_hex IS NOT NULL
+          AND (category_filter IS NULL OR LOWER(p.category) = LOWER(category_filter))
+        ORDER BY color_distance ASC
+        LIMIT 10
     )
-    SELECT 
-        p.product_id,
-        p.name,
-        p.brand,
-        p.category,
-        pv.color_hex AS swatch_hex,
-        SQRT(
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - t.r, 2) +
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - t.g, 2) +
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - t.b, 2)
-        ) AS color_distance
-    FROM PRODUCTS.PRODUCTS p
-    JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
-    CROSS JOIN target_rgb t
-    WHERE pv.color_hex IS NOT NULL
-    ORDER BY color_distance ASC
-    LIMIT 10
 $$;
 
-COMMENT ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR) IS 
-'Find top 10 products matching a target color (hex format like #E75480). Returns products sorted by color distance (lower = closer match).';
+COMMENT ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR, VARCHAR, INT) IS 
+'Find products matching a target color (hex format like #E75480). Optional category_filter (lips, eyes, face, skincare) and limit_results (default 10). Returns array of products sorted by color distance (lower = closer match).';
 
--- Alternative version with category filter
+-- Alternative version with required category filter (for simpler agent calls)
+DROP FUNCTION IF EXISTS PRODUCTS.TOOL_MATCH_PRODUCTS_BY_CATEGORY(VARCHAR, VARCHAR);
+
 CREATE OR REPLACE FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS_BY_CATEGORY(
     target_hex VARCHAR,
     category_filter VARCHAR
 )
-RETURNS TABLE (
-    product_id VARCHAR,
-    name VARCHAR,
-    brand VARCHAR,
-    category VARCHAR,
-    swatch_hex VARCHAR,
-    color_distance FLOAT
-)
+RETURNS ARRAY
 LANGUAGE SQL
 AS
 $$
-    WITH target_rgb AS (
+    SELECT ARRAY_AGG(OBJECT_CONSTRUCT(
+        'product_id', product_id,
+        'name', name,
+        'brand', brand,
+        'category', category,
+        'swatch_hex', swatch_hex,
+        'color_distance', color_distance,
+        'price', price,
+        'image_url', image_url
+    ))
+    FROM (
         SELECT 
-            TO_NUMBER(SUBSTR(target_hex, 2, 2), 'XX') AS r,
-            TO_NUMBER(SUBSTR(target_hex, 4, 2), 'XX') AS g,
-            TO_NUMBER(SUBSTR(target_hex, 6, 2), 'XX') AS b
+            p.product_id,
+            p.name,
+            p.brand,
+            p.category,
+            pv.color_hex AS swatch_hex,
+            ROUND(SQRT(
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 2, 2), 'XX'), 2) +
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 4, 2), 'XX'), 2) +
+                POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - TO_NUMBER(SUBSTR(target_hex, 6, 2), 'XX'), 2)
+            ), 2) AS color_distance,
+            p.current_price AS price,
+            pm.url AS image_url
+        FROM PRODUCTS.PRODUCTS p
+        JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
+        LEFT JOIN PRODUCTS.PRODUCT_MEDIA pm ON p.product_id = pm.product_id AND pm.is_primary = TRUE
+        WHERE pv.color_hex IS NOT NULL
+          AND LOWER(p.category) = LOWER(category_filter)
+        ORDER BY color_distance ASC
+        LIMIT 10
     )
-    SELECT 
-        p.product_id,
-        p.name,
-        p.brand,
-        p.category,
-        pv.color_hex AS swatch_hex,
-        SQRT(
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 2, 2), 'XX') - t.r, 2) +
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 4, 2), 'XX') - t.g, 2) +
-            POWER(TO_NUMBER(SUBSTR(pv.color_hex, 6, 2), 'XX') - t.b, 2)
-        ) AS color_distance
-    FROM PRODUCTS.PRODUCTS p
-    JOIN PRODUCTS.PRODUCT_VARIANTS pv ON p.product_id = pv.product_id
-    CROSS JOIN target_rgb t
-    WHERE pv.color_hex IS NOT NULL
-      AND LOWER(p.category) = LOWER(category_filter)
-    ORDER BY color_distance ASC
-    LIMIT 10
 $$;
 
 COMMENT ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS_BY_CATEGORY(VARCHAR, VARCHAR) IS 
-'Find top 10 products in a category matching a target color. Category examples: lipstick, foundation, eyeshadow, blush.';
+'Find top 10 products in a specific category matching a target color. Returns array with price and image_url. Category examples: lips, eyes, face, skincare.';
 
 -- ============================================================================
 -- PART 2: CART/CHECKOUT TOOLS (Transactional Operations)
@@ -672,6 +713,38 @@ UNION ALL SELECT 'CART_OLTP.TOOL_ADD_TO_CART', 'Procedure', 'Add item to cart'
 UNION ALL SELECT 'CART_OLTP.TOOL_UPDATE_CART_ITEM', 'Procedure', 'Update cart item'
 UNION ALL SELECT 'CART_OLTP.TOOL_REMOVE_FROM_CART', 'Procedure', 'Remove from cart'
 UNION ALL SELECT 'CART_OLTP.TOOL_SUBMIT_ORDER', 'Procedure', 'Complete order';
+
+-- ============================================================================
+-- PART 6: GRANT PERMISSIONS FOR CORTEX AGENT
+-- The agent needs USAGE on all tool functions to execute them
+-- ============================================================================
+
+-- Grant USAGE on functions to the role used by the Cortex Agent
+GRANT USAGE ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(VARCHAR, FLOAT, INT) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS(VARCHAR, VARCHAR, INT) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON FUNCTION PRODUCTS.TOOL_MATCH_PRODUCTS_BY_CATEGORY(VARCHAR, VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+
+-- Grant USAGE on procedures (use EXECUTE for procedures)
+GRANT USAGE ON PROCEDURE CART_OLTP.TOOL_CREATE_CART_SESSION(VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON PROCEDURE CART_OLTP.TOOL_ADD_TO_CART(VARCHAR, VARCHAR, INT, VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON PROCEDURE CART_OLTP.TOOL_UPDATE_CART_ITEM(VARCHAR, VARCHAR, INT) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON PROCEDURE CART_OLTP.TOOL_REMOVE_FROM_CART(VARCHAR, VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON PROCEDURE CART_OLTP.TOOL_SUBMIT_ORDER(VARCHAR, VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+GRANT USAGE ON FUNCTION CART_OLTP.TOOL_GET_CART_SESSION(VARCHAR) TO ROLE AGENT_COMMERCE_ROLE;
+
+-- Grant SELECT on underlying tables for the functions to work
+GRANT SELECT ON TABLE CUSTOMERS.CUSTOMERS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT ON TABLE CUSTOMERS.CUSTOMER_FACE_EMBEDDINGS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT ON TABLE PRODUCTS.PRODUCTS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT ON TABLE PRODUCTS.PRODUCT_VARIANTS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT ON TABLE PRODUCTS.PRODUCT_MEDIA TO ROLE AGENT_COMMERCE_ROLE;
+
+-- Grant on hybrid tables for cart operations
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE CART_OLTP.CART_SESSIONS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE CART_OLTP.CART_ITEMS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE CART_OLTP.ORDERS TO ROLE AGENT_COMMERCE_ROLE;
+GRANT SELECT, INSERT, UPDATE, DELETE ON TABLE CART_OLTP.ORDER_ITEMS TO ROLE AGENT_COMMERCE_ROLE;
 
 -- ============================================================================
 -- END

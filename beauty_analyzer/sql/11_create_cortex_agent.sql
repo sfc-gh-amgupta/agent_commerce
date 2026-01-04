@@ -70,6 +70,7 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
       FACE ANALYSIS & CUSTOMER IDENTIFICATION:
       - When customer uploads a face image: use AnalyzeFace to get skin tone and embedding
       - To identify a returning customer: use IdentifyCustomer with the embedding from AnalyzeFace
+        IMPORTANT: Pass the embedding as a JSON string (e.g., "[0.1, 0.2, ...]"), not as an array object
       
       PRODUCT DISCOVERY:
       - Natural language product search: use ProductSearch (e.g., "vegan mascara", "hydrating foundation")
@@ -226,9 +227,9 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
         input_schema:
           type: object
           properties:
-            query_embedding:
-              type: array
-              description: 128-dimensional face embedding array from AnalyzeFace result
+            query_embedding_json:
+              type: string
+              description: 128-dimensional face embedding as JSON string (e.g., "[0.1, 0.2, ...]") from AnalyzeFace result
             match_threshold:
               type: number
               description: Minimum match confidence threshold (default 0.6, range 0-1)
@@ -236,7 +237,7 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
               type: integer
               description: Maximum number of matching customers to return (default 5)
           required:
-            - query_embedding
+            - query_embedding_json
     
     - tool_spec:
         type: generic

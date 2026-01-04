@@ -1,6 +1,12 @@
 // =============================================================================
 // Agent Commerce - Main Application
 // =============================================================================
+// Features:
+// - Demo mode with mock retailer website
+// - Admin mode for widget customization
+// - Widget-only mode for embedding
+// - Cart badge showing items count
+// =============================================================================
 
 import { useState, useEffect } from 'react';
 import { ChatWidget } from './components/ChatWidget';
@@ -14,6 +20,7 @@ function App() {
   const [isOpen, setIsOpen] = useState(false);
   const [config, setConfig] = useState<WidgetConfig>(DEFAULT_CONFIG);
   const [mode, setMode] = useState<'demo' | 'admin' | 'widget'>('demo');
+  const [cartCount, setCartCount] = useState(0);
 
   // Check URL path on load
   useEffect(() => {
@@ -23,7 +30,7 @@ function App() {
     } else if (path === '/widget') {
       setMode('widget');
     } else {
-      setMode('demo');  // Default to demo at /
+      setMode('demo');
     }
   }, []);
 
@@ -46,7 +53,7 @@ function App() {
 
   // Admin mode - show configuration panel
   if (mode === 'admin') {
-    return (
+  return (
       <div style={{ display: 'flex', height: '100vh' }}>
         <div style={{ flex: 1, overflow: 'auto' }}>
           <AdminPanel config={config} onConfigChange={handleConfigChange} />
@@ -76,7 +83,7 @@ function App() {
           ) : (
             <WidgetButton config={config} onClick={() => setIsOpen(true)} />
           )}
-        </div>
+      </div>
       </div>
     );
   }
@@ -86,7 +93,11 @@ function App() {
     return (
       <>
         {isOpen ? (
-          <ChatWidget config={config} onClose={() => setIsOpen(false)} />
+          <ChatWidget 
+            config={config} 
+            onClose={() => setIsOpen(false)} 
+            onCartUpdate={setCartCount}
+          />
         ) : (
           <WidgetButton config={config} onClick={() => setIsOpen(true)} />
         )}
@@ -125,6 +136,20 @@ function App() {
             <a href="#" style={demoStyles.navLink}>Shop</a>
             <a href="#" style={demoStyles.navLink}>New</a>
             <a href="#" style={demoStyles.navLink}>Brands</a>
+            
+            {/* Cart Icon with Badge */}
+            <div style={demoStyles.cartContainer}>
+              <a href="#" style={demoStyles.navLink}>🛒</a>
+              {cartCount > 0 && (
+                <span style={{
+                  ...demoStyles.cartBadge,
+                  background: config.theme.primary_color,
+                }}>
+                  {cartCount}
+                </span>
+              )}
+            </div>
+            
             <a href="/admin" style={{...demoStyles.navLink, color: config.theme.secondary_color, fontWeight: 600}}>⚙️ Admin</a>
           </nav>
         </div>
@@ -177,7 +202,11 @@ function App() {
 
       {/* Widget */}
       {isOpen ? (
-        <ChatWidget config={config} onClose={() => setIsOpen(false)} />
+        <ChatWidget 
+          config={config} 
+          onClose={() => setIsOpen(false)} 
+          onCartUpdate={setCartCount}
+        />
       ) : (
         <WidgetButton config={config} onClick={() => setIsOpen(true)} />
       )}
@@ -196,6 +225,9 @@ const demoStyles: Record<string, React.CSSProperties> = {
     background: '#fff',
     padding: '16px 0',
     boxShadow: '0 1px 3px rgba(0,0,0,0.1)',
+    position: 'sticky',
+    top: 0,
+    zIndex: 100,
   },
   headerContent: {
     maxWidth: '1200px',
@@ -217,12 +249,35 @@ const demoStyles: Record<string, React.CSSProperties> = {
   nav: {
     display: 'flex',
     gap: '32px',
+    alignItems: 'center',
   },
   navLink: {
     color: '#333',
     textDecoration: 'none',
     fontSize: '14px',
     fontWeight: 500,
+  },
+  cartContainer: {
+    position: 'relative',
+    display: 'inline-block',
+  },
+  cartBadge: {
+    position: 'absolute',
+    top: '-8px',
+    right: '-12px',
+    background: '#ec4899',
+    color: '#fff',
+    fontSize: '10px',
+    fontWeight: 700,
+    minWidth: '18px',
+    height: '18px',
+    borderRadius: '9px',
+    display: 'flex',
+    alignItems: 'center',
+    justifyContent: 'center',
+    padding: '0 4px',
+    boxShadow: '0 2px 4px rgba(0,0,0,0.2)',
+    animation: 'cartBadgePop 0.3s ease-out',
   },
   hero: {
     maxWidth: '1200px',
@@ -258,6 +313,7 @@ const demoStyles: Record<string, React.CSSProperties> = {
     fontWeight: 600,
     cursor: 'pointer',
     boxShadow: '0 4px 20px rgba(236, 72, 153, 0.4)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
   },
   heroImage: {
     flex: 1,
@@ -289,6 +345,7 @@ const demoStyles: Record<string, React.CSSProperties> = {
     borderRadius: '16px',
     textAlign: 'center' as const,
     boxShadow: '0 4px 20px rgba(0,0,0,0.05)',
+    transition: 'transform 0.2s, box-shadow 0.2s',
   },
   featureIcon: {
     fontSize: '40px',

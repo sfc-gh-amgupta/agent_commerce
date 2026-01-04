@@ -21,9 +21,43 @@ export interface ChatResponse {
   response: string;
   session_id: string;
   tools_used?: string[];
+  tool_results?: any[];
+  tables?: any[];
   analysis_result?: AnalysisResult;
   products?: any[];
   cart_update?: any;
+  error?: string;
+  // New fields
+  timing?: {
+    preprocessing_ms: number;
+    agent_ms: number;
+    total_ms: number;
+  };
+  thinking?: string;
+  message_id?: string;
+}
+
+export interface FeedbackRequest {
+  message_id: string;
+  session_id: string;
+  rating: 'like' | 'dislike';
+  feedback_text?: string;
+}
+
+export async function submitFeedback(request: FeedbackRequest): Promise<{ success: boolean; message: string }> {
+  const response = await fetch(`${API_BASE}/feedback`, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/json',
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(`Feedback API error: ${response.status}`);
+  }
+
+  return response.json();
 }
 
 export async function sendMessage(request: ChatRequest): Promise<ChatResponse> {
@@ -117,6 +151,32 @@ export async function checkHealth(): Promise<{ status: string; version: string }
   
   if (!response.ok) {
     throw new Error(`Health check failed: ${response.status}`);
+  }
+
+  return response.json();
+}
+
+// =============================================================================
+// Stage Upload API - Upload images to Snowflake Stage
+// =============================================================================
+
+export interface StageUploadResponse {
+  success: boolean;
+  stage_path?: string;
+  error?: string;
+}
+
+export async function uploadImageToStage(file: File): Promise<StageUploadResponse> {
+  const formData = new FormData();
+  formData.append('file', file);
+
+  const response = await fetch(`${API_BASE}/upload-image`, {
+    method: 'POST',
+    body: formData,
+  });
+
+  if (!response.ok) {
+    throw new Error(`Upload API error: ${response.status}`);
   }
 
   return response.json();

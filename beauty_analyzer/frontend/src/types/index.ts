@@ -20,9 +20,21 @@ export interface Attachment {
 
 export interface MessageMetadata {
   toolsUsed?: string[];
+  toolResults?: any[];
+  tables?: any[];
   analysisResult?: AnalysisResult;
   products?: ProductMatch[];
   cartUpdate?: CartUpdate;
+  error?: string;
+  // New fields
+  timing?: {
+    preprocessing_ms: number;
+    agent_ms: number;
+    total_ms: number;
+  };
+  thinking?: string;
+  messageId?: string;
+  feedback?: 'like' | 'dislike';
 }
 
 export interface AnalysisResult {
@@ -116,6 +128,7 @@ export interface MessageTemplates {
   welcome: string;
   identity_prompt: string;
   analysis_complete: string;
+  placeholder: string;
 }
 
 export interface ConversationState {
@@ -260,6 +273,7 @@ export const DEFAULT_CONFIG: WidgetConfig = {
     welcome: "Hi! I'm your Commerce Assistant. How can I help you today?",
     identity_prompt: 'Is this you, {name}?',
     analysis_complete: '✨ Your Beauty Profile',
+    placeholder: 'Type a message...',
   },
   demo: {
     hero_title: 'Find Your Perfect Shade',

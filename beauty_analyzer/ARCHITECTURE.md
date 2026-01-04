@@ -10,10 +10,19 @@
 |-----------|------|--------|
 | **Cortex Agent** | `UTIL.AGENTIC_COMMERCE_ASSISTANT` | ✅ Deployed |
 | **SPCS Backend** | Face recognition, skin analysis | ✅ Running |
+| **React Frontend** | Chatbot widget + Demo site | ✅ Deployed |
 | **Cortex Analyst** | 5 Semantic Views | ✅ Connected |
 | **Cortex Search** | 2 Search Services | ✅ Connected |
 | **Beauty Tools** | AnalyzeFace, IdentifyCustomer, MatchProducts | ✅ 3 Tools |
 | **ACP Cart Tools** | ACP_CreateCart, ACP_GetCart, ACP_AddItem, ACP_UpdateItem, ACP_RemoveItem, ACP_Checkout | ✅ 6 Tools |
+
+### Deployment
+
+```bash
+# One-step deployment
+export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
+./deploy.sh
+```
 
 ---
 
@@ -1037,6 +1046,46 @@ CREATE CORTEX VECTOR INDEX face_embedding_index
 └─────────────────────────────────────────┘
 ```
 
+### Widget Features
+
+| Feature | Description |
+|---------|-------------|
+| **Maximize Button** | Expands widget to full-screen ChatGPT-like interface (⊕/⊖ toggle) |
+| **Cart Badge** | Shows real-time item count on main website header when ACP cart tools are used |
+| **Face Analysis Card** | Visual rendering with color swatches, undertone badges, and Fitzpatrick/Monk scales |
+| **Tool Badges** | Shows which Cortex Agent tools were used for each response |
+| **Markdown Support** | Rich rendering of tables, code blocks, lists, and emphasis |
+| **Image Upload** | Upload photos for face analysis with drag-and-drop or camera capture |
+| **Theme Presets** | 12 industry themes (beauty, electronics, fashion, grocery, airlines, hotels) |
+
+### Maximized Mode
+
+```
+┌─────────────────────────────────────────────────────────────────┐
+│  HEADER                                              [⊖] [✕]  │
+│  Commerce Assistant by [RETAILER NAME]                         │
+├─────────────────────────────────────────────────────────────────┤
+│                                                                 │
+│                        CHAT AREA                                │
+│         (Centered, max-width 800px, like ChatGPT)               │
+│                                                                 │
+│    ┌─────────────────────────────────────────────────────────┐  │
+│    │  Face Analysis Results                              ✨  │  │
+│    │  ┌─────────┐  ┌─────────┐                               │  │
+│    │  │  Skin   │  │  Lip    │  Undertone: [Warm]            │  │
+│    │  │ #C68642 │  │ #E75480 │  Fitzpatrick: IV              │  │
+│    │  └─────────┘  └─────────┘  Monk: 5/10                   │  │
+│    └─────────────────────────────────────────────────────────┘  │
+│                                                                 │
+│    ┌─────────┐  ┌─────────┐  ┌─────────┐  ┌─────────┐         │
+│    │Product 1│  │Product 2│  │Product 3│  │Product 4│         │
+│    └─────────┘  └─────────┘  └─────────┘  └─────────┘         │
+│                                                                 │
+├─────────────────────────────────────────────────────────────────┤
+│  📷  [Type a message...                              ]    ➤    │
+└─────────────────────────────────────────────────────────────────┘
+```
+
 ### Analysis Results Display
 
 ```
@@ -1640,41 +1689,51 @@ beauty_analyzer/
                                 └───────────────┘
 ```
 
-### SQL Execution Order
+### One-Step Deployment
+
+The easiest way to deploy the entire application is using the **1-step deploy script**:
 
 ```bash
-# 1. Infrastructure
-snowsql -f sql/01_setup_database.sql   # Database, schemas, warehouse, stages
-snowsql -f sql/02_create_tables.sql    # All tables in domain schemas
+# Set environment variables
+export SNOWFLAKE_USER="your_username"
+export SNOWFLAKE_PASSWORD="your_password"
+export SNOWFLAKE_ACCOUNT="your-account.region"  # Optional - defaults provided
 
-# 2. Cortex Services (created in their respective domain schemas)
-snowsql -f sql/03_create_cortex_services.sql  # Vector Search, Cortex Search
-snowsql -f sql/04_create_semantic_views.sql   # Cortex Analyst models
-
-# 3. UDFs & SPCS
-snowsql -f sql/05_create_udfs.sql             # CIEDE2000, shared UDFs (UTIL schema)
-snowsql -f sql/06_create_spcs_service.sql     # Compute pool, SPCS service
-
-# 4. Sample Data & Tasks
-snowsql -f sql/07_sample_data.sql             # Products, customers, reviews
-snowsql -f sql/08_label_extraction_task.sql   # AI_EXTRACT scheduled task
+# Run the deployment
+cd beauty_analyzer
+./deploy.sh
 ```
 
-### Docker Build
+This script handles everything:
+1. ✅ Builds React frontend
+2. ✅ Builds Docker image
+3. ✅ Pushes to Snowflake Container Registry
+4. ✅ Logs Face Analysis Model to Model Registry
+5. ✅ Creates/updates Cortex Agent
+6. ✅ Recreates SPCS backend service
+
+### Manual SQL Execution (Alternative)
+
+```bash
+# Execute the complete deployment script from Snowsight or SnowSQL
+EXECUTE IMMEDIATE FROM @AGENT_COMMERCE.UTIL.AGENT_COMMERCE_GIT/branches/main/beauty_analyzer/sql/00_deploy_from_github_complete.sql;
+```
+
+### Docker Build (Manual)
 
 ```bash
 # Set registry variables
-export REGISTRY="sfsenorthamerica-demo61.registry.snowflakecomputing.com"
+export SNOWFLAKE_REGISTRY="${SNOWFLAKE_ACCOUNT}.registry.snowflakecomputing.com"
 export REPO="agent_commerce/util/agent_commerce_repo"
-export IMAGE="agent-commerce:latest"
+export IMAGE="agent-commerce-backend:latest"
 
 # Build multi-stage image
-docker build --platform linux/amd64 -t ${IMAGE} .
+docker build --platform linux/amd64 -t ${REPO}/${IMAGE} backend/
 
 # Tag and push
-docker tag ${IMAGE} ${REGISTRY}/${REPO}/${IMAGE}
-docker login ${REGISTRY} -u <username>
-docker push ${REGISTRY}/${REPO}/${IMAGE}
+docker tag ${REPO}/${IMAGE} ${SNOWFLAKE_REGISTRY}/${REPO}/${IMAGE}
+docker login ${SNOWFLAKE_REGISTRY} -u ${SNOWFLAKE_USER}
+docker push ${SNOWFLAKE_REGISTRY}/${REPO}/${IMAGE}
 ```
 
 ### Service Endpoints
