@@ -95,7 +95,7 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
 
   orchestration:
     budget:
-      seconds: 60
+      seconds: 180  # Increased for V2 flow: AnalyzeFace + IdentifyCustomer + MatchProducts
       tokens: 32000
 
   instructions:
