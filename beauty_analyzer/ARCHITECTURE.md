@@ -46,11 +46,44 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
 
 > **Why this demo stands out:** Snowflake Agent Commerce showcases capabilities that are unique to the Snowflake platform and differentiated from typical commerce demos.
 
+### Architecture Overview
+
+```
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SNOWFLAKE AGENT COMMERCE                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+     📱 Any Frontend                    🤖 Cortex Agent                    ❄️ Snowflake
+    ─────────────────                  ─────────────────                  ─────────────────
+    
+    ┌─────────────┐                   ┌─────────────────┐                ┌─────────────────┐
+    │ Web App     │                   │                 │                │ Image Vector    │
+    │ Mobile App  │  ┌──────────┐     │   Orchestrates  │    16 Tools    │   Embeddings    │
+    │ Voice Agent │──│ REST API │────▶│   16 Tools      │ ─────────────▶ │ Cortex Search   │
+    │ Claude      │  │ OpenAI   │     │   Autonomously  │                │ Cortex Analyst  │
+    │ Desktop     │  │ SDK      │     │                 │                │ Hybrid Tables   │
+    └─────────────┘  └──────────┘     └─────────────────┘                │ ML Model (SPCS) │
+           │                                  │                          └─────────────────┘
+           │  MCP                             │
+           │  Protocol                        │
+           ▼                                  │
+    ┌─────────────┐              ┌────────────┼────────────┐
+    │ VS Code     │              │            │            │
+    │ Copilot     │              ▼            ▼            ▼
+    └─────────────┘        ┌──────────┐ ┌──────────┐ ┌──────────┐
+                           │ 🔐 AUTH  │ │ 🎨 DISCO-│ │ 🛒 TRANS-│
+                           │          │ │   VER    │ │   ACT    │
+                           │ Face ID  │ │ Search   │ │ ACP Cart │
+                           │ Loyalty  │ │ Match    │ │ Checkout │
+                           │ History  │ │ Reviews  │ │ Orders   │
+                           └──────────┘ └──────────┘ └──────────┘
+```
+
 ### 🌟 Key Differentiators
 
-#### 1. Face-First Commerce Experience
+#### 1. Visual AI Commerce Experience
 Unlike typical chatbots that start with text, this demo leads with **visual AI**:
-- **Instant Face Recognition** → Identifies returning customers from a selfie (dlib 128-dim embeddings + Cortex Vector Search)
+- **Instant Face Recognition** → Identifies returning customers from a selfie (dlib 128-dim embeddings + Image Vector Embeddings)
 - **Scientific Skin Analysis** → Fitzpatrick type, Monk shade, undertone detection in seconds
 - **Privacy-First Verification** → Agent asks "Are you [Name]?" before revealing any account details
 
@@ -106,7 +139,7 @@ Production-ready deployment pattern for real-world use:
 | Capability | Snowflake Feature |
 |------------|------------------|
 | Face embeddings | SPCS + dlib ResNet |
-| Face matching | Cortex Vector Search |
+| Face matching | Image Vector Embeddings |
 | Product discovery | Cortex Search |
 | Structured queries | Cortex Analyst |
 | Agent orchestration | Cortex Agent |
@@ -122,7 +155,7 @@ Production-ready deployment pattern for real-world use:
     ↓
 🔬 Face Analysis (skin tone, Monk shade, Fitzpatrick, undertone)
     ↓
-🔍 Identity Check (Vector Search → "Are you Sarah?")
+🔍 Identity Check (Image Vector Embeddings → "Are you Sarah?")
     ↓
 ✅ Email Verification (privacy-first, no data leak)
     ↓
@@ -148,7 +181,7 @@ Production-ready deployment pattern for real-world use:
 
 ### What This App Does
 
-1. **Face Recognition** — Identifies returning customers using face embeddings (dlib + Cortex Vector Search)
+1. **Face Recognition** — Identifies returning customers using face embeddings (dlib + Image Vector Embeddings)
 2. **Skin Tone Analysis** — Detects skin color, Fitzpatrick type, Monk scale, undertone
 3. **Lip Color Analysis** — Detects lip color with makeup detection
 4. **Product Matching** — Recommends cosmetics using CIEDE2000 color distance
@@ -164,7 +197,7 @@ Production-ready deployment pattern for real-world use:
 | **Backend** | FastAPI (Python) in SPCS |
 | **Face Detection** | MediaPipe Face Mesh (468 landmarks) |
 | **Face Recognition** | dlib ResNet (128-dim embeddings) |
-| **Customer Identification** | Cortex Vector Search (ANN) |
+| **Customer Identification** | Image Vector Embeddings (ANN) |
 | **Product/Social Search** | Cortex Search (semantic) |
 | **Structured Queries** | Cortex Analyst + Semantic Views |
 | **Label Extraction** | AI_EXTRACT |
@@ -203,7 +236,7 @@ Production-ready deployment pattern for real-world use:
 │  │                         CORTEX SERVICES                                    │  │
 │  │                                                                            │  │
 │  │  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  ┌──────────────┐  │  │
-│  │  │ Cortex Agent │  │ Vector Search│  │ Cortex Search│  │ Cortex       │  │  │
+│  │  │ Cortex Agent │  │Image Vectors │  │ Cortex Search│  │ Cortex       │  │  │
 │  │  │ Orchestrator │  │ (Embeddings) │  │ (Semantic)   │  │ Analyst      │  │  │
 │  │  └──────────────┘  └──────────────┘  └──────────────┘  └──────────────┘  │  │
 │  │                                                                            │  │
@@ -450,7 +483,7 @@ tools:
 
 | Tool | Type | Description |
 |------|------|-------------|
-| `identify_customer` | Cortex Vector Search | Match face embedding to known customers |
+| `identify_customer` | Image Vector Embeddings | Match face embedding to known customers |
 | `query_customer` | Cortex Analyst | Profile, history, loyalty points, preferences |
 | `update_customer_profile` | SQL UDF | Update skin profile, preferences |
 | `redeem_points` | SQL UDF | Apply loyalty points to checkout |
@@ -494,7 +527,7 @@ tools:
 
 | Schema | Purpose | Cortex Services |
 |--------|---------|-----------------|
-| **CUSTOMERS** | Profiles, embeddings, analysis history | Vector Search (face embeddings), Analyst |
+| **CUSTOMERS** | Profiles, embeddings, analysis history | Image Vector Embeddings, Analyst |
 | **PRODUCTS** | Catalog, variants, media, labels | Search (products, labels), Analyst |
 | **INVENTORY** | Locations, stock levels, transactions | Analyst |
 | **SOCIAL** | Reviews, mentions, influencers, trends | Search (social content), Analyst |
@@ -1024,7 +1057,7 @@ CREATE CORTEX SEARCH SERVICE social_proof_search
   );
 ```
 
-### Cortex Vector Search Index
+### Image Vector Embeddings Index
 
 ```sql
 -- ============================================================================
@@ -1491,8 +1524,8 @@ beauty_analyzer/
          │
          ▼
 ┌─────────────────┐
-│ Cortex Vector   │
-│ Search (ANN)    │
+│ Image Vector    │
+│ Embeddings(ANN) │
 └────────┬────────┘
          │
          ▼
@@ -1608,7 +1641,7 @@ beauty_analyzer/
                              │
                              ▼
                     ┌─────────────────┐
-                    │  Vector Search  │
+                    │ Image Vectors   │
                     └────────┬────────┘
                              │
                              ▼
