@@ -28,7 +28,7 @@
 -- ┌─────────────────────────────────────────┬─────────────┬──────────────────────────────┐
 -- │ Tool                                    │ Type        │ Purpose                      │
 -- ├─────────────────────────────────────────┼─────────────┼──────────────────────────────┤
--- │ CUSTOMERS.TOOL_ANALYZE_FACE             │ Python UDF  │ Face/skin analysis via SPCS  │
+-- │ CUSTOMERS.TOOL_ANALYZE_FACE             │ SQL UDF     │ Face/skin analysis (ML Svc)  │
 -- │ CUSTOMERS.TOOL_IDENTIFY_CUSTOMER        │ SQL UDTF    │ Face matching (Vector Search)│
 -- │ PRODUCTS.TOOL_MATCH_PRODUCTS            │ SQL UDTF    │ Color matching (CIEDE2000)   │
 -- │ CART_OLTP.TOOL_CREATE_CART_SESSION      │ Procedure   │ Create cart session          │
@@ -41,7 +41,7 @@
 --
 -- PREREQUISITES:
 --   - Database, schemas, and tables created (01, 02)
---   - SPCS backend running (for TOOL_ANALYZE_FACE)
+--   - ML_FACE_ANALYSIS_SERVICE running (for TOOL_ANALYZE_FACE)
 --
 -- TABLE REFERENCES (from 02_create_tables.sql):
 --   - CART_OLTP.CART_SESSIONS (Hybrid Table)
@@ -62,79 +62,25 @@ USE WAREHOUSE AGENT_COMMERCE_WH;
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_ANALYZE_FACE
 -- Extracts face embedding, skin tone, lip color from uploaded image
--- Calls SPCS backend for ML processing
+-- Uses ML_FACE_ANALYSIS_SERVICE (Model Registry service function)
 -- 
--- NOTE: This UDF calls the SPCS backend. For it to work:
---   1. The SPCS service must be running
---   2. If calling from outside SPCS, you need EXTERNAL ACCESS INTEGRATION
---   3. Inside SPCS network, services communicate via internal DNS
+-- The ML service uses dlib ResNet for 128-dim face embeddings and 
+-- face_recognition library for skin/lip analysis.
 -- ----------------------------------------------------------------------------
 USE SCHEMA CUSTOMERS;
 
 CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(image_base64 VARCHAR)
 RETURNS VARIANT
-LANGUAGE PYTHON
-RUNTIME_VERSION = '3.10'
-PACKAGES = ('snowflake-snowpark-python', 'requests')
-HANDLER = 'analyze_face'
+LANGUAGE SQL
 AS
 $$
-import json
-
-def analyze_face(image_base64):
-    """
-    Analyze face from base64 image.
-    Returns: embedding, skin_tone, lip_color, fitzpatrick, monk_shade, undertone
-    
-    NOTE: This function calls SPCS endpoints. It works when:
-    - Running inside SPCS network (service-to-service)
-    - Or with proper EXTERNAL ACCESS INTEGRATION configured
-    """
-    try:
-        import requests
-        
-        # SPCS backend internal DNS
-        spcs_url = "http://agent-commerce-backend:8000"
-        
-        # Extract embedding
-        embedding_response = requests.post(
-            f"{spcs_url}/extract-embedding",
-            json={"image_base64": image_base64},
-            timeout=30
-        )
-        embedding_result = embedding_response.json()
-        
-        # Analyze skin
-        skin_response = requests.post(
-            f"{spcs_url}/analyze-skin",
-            json={"image_base64": image_base64},
-            timeout=30
-        )
-        skin_result = skin_response.json()
-        
-        return {
-            "success": True,
-            "face_detected": embedding_result.get("face_detected", False),
-            "embedding": embedding_result.get("embedding"),
-            "quality_score": embedding_result.get("quality_score"),
-            "skin_hex": skin_result.get("skin_hex"),
-            "skin_rgb": skin_result.get("skin_rgb"),
-            "skin_lab": skin_result.get("skin_lab"),
-            "lip_hex": skin_result.get("lip_hex"),
-            "lip_rgb": skin_result.get("lip_rgb"),
-            "fitzpatrick_type": skin_result.get("fitzpatrick_type"),
-            "monk_shade": skin_result.get("monk_shade"),
-            "undertone": skin_result.get("undertone")
-        }
-    except Exception as e:
-        return {
-            "success": False,
-            "error": str(e)
-        }
+    SELECT PARSE_JSON(
+        UTIL.ML_FACE_ANALYSIS_SERVICE!PREDICT(image_base64):"output_feature_0"::VARCHAR
+    )
 $$;
 
 COMMENT ON FUNCTION CUSTOMERS.TOOL_ANALYZE_FACE(VARCHAR) IS 
-'Analyze face from uploaded image (base64). Returns embedding (128-dim), skin tone (hex, RGB, LAB), lip color, Fitzpatrick type (1-6), Monk shade (1-10), and undertone (warm/cool/neutral). Requires SPCS backend.';
+'Analyze face from uploaded image (base64). Returns embedding (128-dim), skin tone (hex), lip color, Fitzpatrick type (1-6), Monk shade (1-10), and undertone (warm/cool/neutral). Uses ML Model Registry service.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_IDENTIFY_CUSTOMER

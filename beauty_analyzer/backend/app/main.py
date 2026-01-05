@@ -4,22 +4,28 @@ Agent Commerce - SPCS Backend
 FastAPI backend for face recognition, skin analysis, and color matching.
 Deployed as Snowpark Container Service.
 
-ARCHITECTURE (V1 - Backend-Analyzed):
-=====================================
-This is the V1 architecture where face analysis is done LOCALLY in this backend,
-and pre-analyzed data is passed to the Cortex Agent in the message.
+ARCHITECTURE MODES (Toggle via USE_AGENT_FACE_ANALYSIS env var):
+================================================================
 
-Flow:
-1. Widget uploads image to this backend (/api/agent/message)
-2. Backend extracts face embedding and skin analysis using local ML models
-3. Backend prepends analysis results to the user message
-4. Agent receives enriched message and calls IdentifyCustomer, MatchProducts
+V1 - Backend-Analyzed (Default, USE_AGENT_FACE_ANALYSIS=false):
+  - Face analysis done LOCALLY in this backend using dlib/mediapipe
+  - Pre-analyzed data (embedding, skin_hex) passed to agent in message
+  - Agent receives enriched message, calls IdentifyCustomer, MatchProducts
+  - Agent instructions: Expect pre-analyzed data in message
+
+V2 - Agent-Orchestrated (USE_AGENT_FACE_ANALYSIS=true):
+  - Backend passes base64 image to agent WITHOUT local analysis
+  - Agent calls TOOL_ANALYZE_FACE (ML Model Registry service)
+  - Agent receives analysis, then calls IdentifyCustomer, MatchProducts
+  - Agent instructions: Call AnalyzeFace tool first
+
+Toggle:
+  - V1 → V2: Set USE_AGENT_FACE_ANALYSIS=true, update agent instructions
+  - V2 → V1: Set USE_AGENT_FACE_ANALYSIS=false, revert agent instructions
 
 IMPORTANT COMPATIBILITY NOTES:
-- The Cortex Agent (11_create_cortex_agent.sql) must have V1 orchestration 
-  instructions that expect pre-analyzed data in the message.
-- If using V2 (Agent-Orchestrated) where agent calls AnalyzeFace with stage 
-  paths, the orchestration instructions in the agent must be updated.
+- The Cortex Agent (11_create_cortex_agent.sql) must have matching 
+  orchestration instructions for the selected mode.
 - Generic tool input_schemas must have ALL parameters in 'required' list to
   avoid "unsupported parameter type: <nil>" errors. See REQUIRED_PARAMS_FIX
   annotations in 11_create_cortex_agent.sql.
@@ -56,6 +62,17 @@ from typing import AsyncGenerator
 # SPCS provides these environment variables for authentication
 SNOWFLAKE_ACCOUNT = os.environ.get("SNOWFLAKE_ACCOUNT", "")
 SNOWFLAKE_HOST = os.environ.get("SNOWFLAKE_HOST", "")  # e.g., account.snowflakecomputing.com
+
+# ============================================================================
+# FEATURE FLAG: V1 vs V2 Face Analysis
+# ============================================================================
+# V1 (False/Default): Backend does local face analysis, embeds results in message
+# V2 (True): Backend passes image to agent, agent calls TOOL_ANALYZE_FACE
+# 
+# Toggle: Set USE_AGENT_FACE_ANALYSIS=true in environment to enable V2
+# Revert: Set USE_AGENT_FACE_ANALYSIS=false or unset to use V1
+# ============================================================================
+USE_AGENT_FACE_ANALYSIS = os.environ.get("USE_AGENT_FACE_ANALYSIS", "false").lower() == "true"
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
@@ -1364,36 +1381,83 @@ async def chat_endpoint(request: ChatRequest):
     
     if request.image_base64:
         try:
-            image = decode_base64_image(request.image_base64)
-            skin_result = analyze_skin(image)
-            embedding_result = extract_face_embedding(image)
-            
-            if skin_result.get("success"):
-                # Get the embedding (128-dim vector)
-                embedding = embedding_result.get("embedding", [])
-                face_detected = embedding_result.get("face_detected", False) and len(embedding) == 128
+            if USE_AGENT_FACE_ANALYSIS:
+                # ================================================================
+                # V2: Agent-Orchestrated Face Analysis
+                # ================================================================
+                # Pass base64 image to agent, let agent call TOOL_ANALYZE_FACE
+                # Agent will receive analysis results and proceed with workflow
+                # ================================================================
+                logger.info("🔄 V2 Mode: Passing image to agent for analysis")
                 
+                # Provide minimal analysis_data for frontend display (will be updated by agent)
                 analysis_data = {
                     "success": True,
-                    "skin_hex": skin_result.get("skin_hex"),
-                    "lip_hex": skin_result.get("lip_hex"),
-                    "fitzpatrick": skin_result.get("fitzpatrick_type"),  # Frontend expects 'fitzpatrick'
-                    "monk_shade": skin_result.get("monk_shade"),
-                    "undertone": skin_result.get("undertone"),
-                    "face_detected": face_detected,
-                    "quality_score": embedding_result.get("quality_score"),
-                    "embedding": embedding if face_detected else None,  # Include full 128-dim embedding
+                    "mode": "agent_analyzed",
+                    "message": "Image sent to agent for analysis"
                 }
                 
-                # Build enriched message with FULL analysis results including embedding
-                # The agent needs the embedding to call TOOL_IDENTIFY_CUSTOMER
-                embedding_json = json.dumps(embedding) if face_detected else "null"
+                enriched_message = f"""The user uploaded a face image for analysis.
+
+**Image Data (base64):**
+{request.image_base64}
+
+**User's Request:** {request.message}
+
+IMPORTANT WORKFLOW:
+1. First, call AnalyzeFace tool with the base64 image above to get:
+   - Face embedding (128-dim vector)
+   - Skin tone (hex color)
+   - Fitzpatrick type, Monk shade, undertone
+   - Lip color
+
+2. After getting the analysis results:
+   - Use IdentifyCustomer with the embedding to check for returning customers
+   - Use MatchProducts with skin_hex to find matching products
+
+3. Follow the customer verification flow if a match is found."""
+
+                logger.info("📤 V2: Image passed to agent for AnalyzeFace tool call")
                 
-                # LOG THE FULL EMBEDDING for debugging/demo setup
-                if face_detected and embedding:
-                    logger.info(f"🧬 REAL EMBEDDING (copy for SQL): {embedding_json}")
+            else:
+                # ================================================================
+                # V1: Backend-Analyzed Face Analysis (Default)
+                # ================================================================
+                # Do local face analysis using dlib/mediapipe
+                # Embed results directly in message for agent
+                # ================================================================
+                logger.info("🔄 V1 Mode: Local face analysis")
                 
-                enriched_message = f"""The user uploaded a face image. Here are the analysis results:
+                image = decode_base64_image(request.image_base64)
+                skin_result = analyze_skin(image)
+                embedding_result = extract_face_embedding(image)
+                
+                if skin_result.get("success"):
+                    # Get the embedding (128-dim vector)
+                    embedding = embedding_result.get("embedding", [])
+                    face_detected = embedding_result.get("face_detected", False) and len(embedding) == 128
+                    
+                    analysis_data = {
+                        "success": True,
+                        "skin_hex": skin_result.get("skin_hex"),
+                        "lip_hex": skin_result.get("lip_hex"),
+                        "fitzpatrick": skin_result.get("fitzpatrick_type"),  # Frontend expects 'fitzpatrick'
+                        "monk_shade": skin_result.get("monk_shade"),
+                        "undertone": skin_result.get("undertone"),
+                        "face_detected": face_detected,
+                        "quality_score": embedding_result.get("quality_score"),
+                        "embedding": embedding if face_detected else None,  # Include full 128-dim embedding
+                    }
+                    
+                    # Build enriched message with FULL analysis results including embedding
+                    # The agent needs the embedding to call TOOL_IDENTIFY_CUSTOMER
+                    embedding_json = json.dumps(embedding) if face_detected else "null"
+                    
+                    # LOG THE FULL EMBEDDING for debugging/demo setup
+                    if face_detected and embedding:
+                        logger.info(f"🧬 REAL EMBEDDING (copy for SQL): {embedding_json}")
+                    
+                    enriched_message = f"""The user uploaded a face image. Here are the analysis results:
 
 **Skin Analysis Results:**
 - Skin Tone: {skin_result.get('skin_hex')} (Monk Shade {skin_result.get('monk_shade')})
@@ -1408,8 +1472,9 @@ async def chat_endpoint(request: ChatRequest):
 User's request: {request.message}
 
 IMPORTANT: You now have the user's face embedding. Use TOOL_IDENTIFY_CUSTOMER with this embedding to check if they are a returning customer. If a match is found with confidence > 0.45, ask them to confirm their identity (e.g., "Is this you, [Name]?"). Then proceed to recommend products based on their skin tone."""
-                
-                logger.info(f"🎨 Image analyzed: skin={skin_result.get('skin_hex')}, monk={skin_result.get('monk_shade')}")
+                    
+                    logger.info(f"🎨 V1: Image analyzed locally: skin={skin_result.get('skin_hex')}, monk={skin_result.get('monk_shade')}")
+                    
         except Exception as e:
             logger.error(f"Image analysis error: {e}")
             enriched_message = f"[Image uploaded but analysis failed: {str(e)}]\n\n{request.message}"

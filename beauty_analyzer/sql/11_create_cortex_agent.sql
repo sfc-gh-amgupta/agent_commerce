@@ -1,7 +1,24 @@
 -- ============================================================================
 -- AGENT COMMERCE - Cortex Agent Definition
 -- ============================================================================
--- This script creates the Cortex Agent using all pre-existing tools:
+-- This script creates the Cortex Agent using all pre-existing tools.
+--
+-- V1/V2 MODE TOGGLE (2026-01-05):
+-- ============================================================================
+-- The agent supports two face analysis modes, controlled by backend env var:
+--
+-- V1 (USE_AGENT_FACE_ANALYSIS=false, default):
+--   - Backend performs local face analysis (dlib/mediapipe)
+--   - Message contains pre-analyzed data (skin_hex, embedding, etc.)
+--   - Agent SKIPS AnalyzeFace, directly uses data from message
+--
+-- V2 (USE_AGENT_FACE_ANALYSIS=true):
+--   - Backend passes base64 image without local analysis
+--   - Agent calls AnalyzeFace tool to get embedding/skin_hex
+--   - Agent then proceeds with IdentifyCustomer/MatchProducts
+--
+-- REVERT: Set USE_AGENT_FACE_ANALYSIS=false in SPCS environment
+-- ============================================================================
 --
 -- ============================================================================
 -- CRITICAL FIX ANNOTATION (2026-01-04)
@@ -91,27 +108,37 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
     orchestration: |
       Tool Selection Guide:
       
-      FACE IMAGE ANALYSIS FLOW (V1 - Backend Pre-Analyzed):
-      The backend performs face analysis BEFORE calling you. When the user uploads/scans a photo,
-      the message will contain text like:
+      ============================================================================
+      FACE IMAGE ANALYSIS - TWO MODES
+      ============================================================================
+      The backend can operate in two modes. Detect which mode from the message format:
       
-        "The user uploaded a face image. Here are the analysis results:
-         **Skin Analysis Results:**
-         - Skin Tone: #HEXCODE (Monk Shade N)
-         - Undertone: warm/cool/neutral
-         - Fitzpatrick Type: I-VI
-         - Lip Color: #HEXCODE
-         - Face Detected: true/false
-         
-         **Face Embedding (128-dimensional vector for customer identification):**
-         [0.1, 0.2, 0.3, ... 128 numbers ...]
-         
-         User's request: ..."
+      V2 MODE (Agent-Orchestrated) - When message contains:
+        "**Image Data (base64):**"
+        followed by a long base64 string (starts with /9j/ or iVBOR...)
+        
+        When you see base64 image data:
+        1. FIRST: Call AnalyzeFace tool with the base64 string
+           - This returns: embedding, skin_hex, lip_hex, fitzpatrick_type, monk_shade, undertone
+        2. THEN: Call IdentifyCustomer with the embedding from AnalyzeFace result
+        3. THEN: Call MatchProducts with the skin_hex from AnalyzeFace result
+        4. Follow the Customer Verification Flow below
       
-      When you see this format in the message:
+      V1 MODE (Backend Pre-Analyzed) - When message contains:
+        "**Skin Analysis Results:**"
+        followed by pre-extracted values (Skin Tone, Undertone, Fitzpatrick, etc.)
+        and a "**Face Embedding (128-dimensional vector...):**" section
+        
+        When you see this pre-analyzed format:
+        1. SKIP AnalyzeFace - the data is already in the message
+        2. FIRST: Call IdentifyCustomer with the embedding array from the message
+           - Copy the ENTIRE array [0.1, 0.2, ...] as the query_embedding_json parameter
+        3. THEN: Call MatchProducts with the Skin Tone hex code
+        4. Follow the Customer Verification Flow below
+      ============================================================================
       
-      1. FIRST: Call IdentifyCustomer with the embedding array from the message
-         - Copy the ENTIRE array [0.1, 0.2, ...] as the query_embedding_json parameter
+      1. FIRST: Call IdentifyCustomer with the embedding (from AnalyzeFace or message)
+         - Pass the ENTIRE 128-element array as the query_embedding_json parameter
       
       2. CUSTOMER VERIFICATION FLOW (Privacy-First):
          Check the match_level returned by IdentifyCustomer:
@@ -154,8 +181,9 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
          - Recommend products that complement their skin tone
          - Use category_filter for specific product types (e.g., "lips", "face", "eyes")
       
-      IMPORTANT: Do NOT call AnalyzeFace - the backend already did this analysis.
-      The face data is already in your message - just extract and use it.
+      IMPORTANT MODE DETECTION:
+      - If you see "**Image Data (base64):**" → V2 mode → Call AnalyzeFace FIRST
+      - If you see "**Skin Analysis Results:**" → V1 mode → DO NOT call AnalyzeFace (data is pre-analyzed)
       
       PRODUCT DISCOVERY:
       - Natural language product search: use ProductSearch (e.g., "vegan mascara", "hydrating foundation")
@@ -216,7 +244,8 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
       
       GUIDELINES:
       - Be warm, professional, and knowledgeable
-      - When face analysis data is provided, use it directly (DO NOT call AnalyzeFace)
+      - V1 mode: When pre-analyzed face data is in message, use it directly (DO NOT call AnalyzeFace)
+      - V2 mode: When base64 image is in message, call AnalyzeFace FIRST to get analysis
       - Explain technical terms (undertones, Fitzpatrick scale) in simple language
       - Use MatchProducts to find products complementing their skin tone
       - Always mention relevant reviews or social proof when recommending products

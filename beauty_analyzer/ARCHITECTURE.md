@@ -1802,6 +1802,23 @@ END;
 
 ## Quick Reference
 
+### Test Customers with Real Face Embeddings
+
+The following customers have **real 128-dimensional dlib face embeddings** extracted from actual face images. Use these for testing the identity recognition flow:
+
+| # | Customer | Email | Tier | Points | Image Source |
+|---|----------|-------|------|--------|--------------|
+| 1 | **Priya Sharma** | priya.sharma@email.com | Silver | 4,287 | `25934.jpg` |
+| 2 | **Olivia Martin** | olivia.martin407@email.com | Silver | 4,471 | `2903.jpg` |
+| 3 | **Layla Lopez** | layla.lopez333@email.com | Gold | 913 | `6523.jpg` |
+| 4 | **Riley Williams** | riley.williams943@email.com | Gold | 847 | `25213.jpg` |
+| 5 | **Amara Okonkwo** | amara.okonkwo@email.com | Platinum | 1,752 | `4219.jpg` |
+| 6 | **Amelia Johnson** | amelia.johnson710@email.com | Platinum | 4,285 | `2429.jpg` |
+| 7 | **Emma Anderson** | emma.anderson@email.com | Bronze | 3,507 | `42247.jpg` |
+| 8 | **Fatima Al-Hassan** | fatima.alhassan@email.com | Gold | 3,377 | `27370.jpg` |
+
+> **Note:** Image files are located in `data/generated/images/faces/`. These embeddings were generated using the `ML_FACE_ANALYSIS_SERVICE` which uses dlib's ResNet model for 128-dimensional face embeddings.
+
 ### Key Thresholds
 
 | Threshold | Value | Meaning |

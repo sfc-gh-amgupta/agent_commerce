@@ -117,16 +117,27 @@ def create_image_stage(session):
 # STEP 2: Recreate Backend Service
 # ============================================================================
 
-def recreate_backend_service(session):
-    """Recreate the frontend/backend SPCS service."""
+def recreate_backend_service(session, use_v2_face_analysis=True):
+    """Recreate the frontend/backend SPCS service.
+    
+    Args:
+        session: Snowpark session
+        use_v2_face_analysis: If True, enables V2 mode where agent calls AnalyzeFace.
+                              If False (default), uses V1 mode with backend analysis.
+    """
     
     print_info("Dropping existing service...")
     session.sql("""
         DROP SERVICE IF EXISTS UTIL.AGENT_COMMERCE_BACKEND
     """).collect()
     
+    # V2 mode: Agent calls TOOL_ANALYZE_FACE
+    # V1 mode: Backend does local analysis
+    v2_env_value = "true" if use_v2_face_analysis else "false"
+    print_info(f"V2 Face Analysis Mode: {use_v2_face_analysis} (USE_AGENT_FACE_ANALYSIS={v2_env_value})")
+    
     print_info("Creating new service with latest image...")
-    session.sql("""
+    session.sql(f"""
         CREATE SERVICE UTIL.AGENT_COMMERCE_BACKEND
             IN COMPUTE POOL AGENT_COMMERCE_POOL
             FROM SPECIFICATION $$
@@ -134,6 +145,8 @@ def recreate_backend_service(session):
               containers:
                 - name: backend
                   image: /AGENT_COMMERCE/UTIL/AGENT_COMMERCE_REPO/agent-commerce-backend:latest
+                  env:
+                    USE_AGENT_FACE_ANALYSIS: "{v2_env_value}"
                   resources:
                     requests:
                       cpu: 1
@@ -152,6 +165,7 @@ def recreate_backend_service(session):
             MIN_INSTANCES = 1
             MAX_INSTANCES = 3
             QUERY_WAREHOUSE = AGENT_COMMERCE_WH
+            EXTERNAL_ACCESS_INTEGRATIONS = (SPCS_BACKEND_ACCESS)
     """).collect()
     
     print_success("Created AGENT_COMMERCE_BACKEND service")
@@ -241,9 +255,9 @@ def main():
     print_step(2, "Creating Image Upload Stage")
     create_image_stage(session)
     
-    # Recreate Backend Service
-    print_step(3, "Recreating Backend Service")
-    ingress_url = recreate_backend_service(session)
+    # Recreate Backend Service with V2 Face Analysis enabled
+    print_step(3, "Recreating Backend Service (V2 Mode)")
+    ingress_url = recreate_backend_service(session, use_v2_face_analysis=True)
     
     # Run Agent Tools SQL (from Git)
     print_step(4, "Running Agent Tools SQL")
