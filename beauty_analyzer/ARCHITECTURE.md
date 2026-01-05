@@ -28,6 +28,7 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
 
 ## Table of Contents
 
+- [Salient & Differentiated Capabilities](#salient--differentiated-capabilities)
 - [Overview](#overview)
 - [System Architecture](#system-architecture)
 - [Cortex Agent Design](#cortex-agent-design)
@@ -38,6 +39,108 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
 - [Module Structure](#module-structure)
 - [User Flow](#user-flow)
 - [Deployment Guide](#deployment-guide)
+
+---
+
+## Salient & Differentiated Capabilities
+
+> **Why this demo stands out:** Snowflake Agent Commerce showcases capabilities that are unique to the Snowflake platform and differentiated from typical commerce demos.
+
+### 🌟 Key Differentiators
+
+#### 1. Face-First Commerce Experience
+Unlike typical chatbots that start with text, this demo leads with **visual AI**:
+- **Instant Face Recognition** → Identifies returning customers from a selfie (dlib 128-dim embeddings + Cortex Vector Search)
+- **Scientific Skin Analysis** → Fitzpatrick type, Monk shade, undertone detection in seconds
+- **Privacy-First Verification** → Agent asks "Are you [Name]?" before revealing any account details
+
+> 💡 *Most commerce demos use email/login. This uses your face as the "password".*
+
+#### 2. Color Science Product Matching (CIEDE2000)
+Not just "similar products" but **perceptually accurate color matching**:
+- Uses **CIEDE2000 (ΔE00)** — the gold standard for human color perception
+- Matches products to detected skin tone in LAB color space
+- ΔE00 < 2.0 = imperceptible difference to human eye
+
+> 💡 *Generic demos use keyword search. This matches colors the way humans perceive them.*
+
+#### 3. 16 Cortex Agent Tools in One Demo
+A comprehensive showcase of **all Cortex capabilities** in a single orchestrated agent:
+
+| Tool Type | Count | Examples |
+|-----------|-------|----------|
+| **Cortex Analyst** | 5 | CustomerAnalyst, ProductAnalyst, InventoryAnalyst, SocialAnalyst, CheckoutAnalyst |
+| **Cortex Search** | 2 | ProductSearch, SocialSearch |
+| **Custom UDFs** | 3 | AnalyzeFace, IdentifyCustomer, MatchProducts |
+| **ACP Cart Tools** | 6 | ACP_CreateCart, ACP_AddItem, ACP_GetCart, ACP_UpdateItem, ACP_RemoveItem, ACP_Checkout |
+
+> 💡 *Most demos show 1-2 tools. This orchestrates 16 tools in a single conversation.*
+
+#### 4. ACP-Compliant Agentic Checkout
+Implements **OpenAI's Agentic Commerce Protocol (ACP)** natively on Snowflake:
+- `ACP_CreateCart` → `ACP_AddItem` → `ACP_GetCart` → `ACP_Checkout`
+- Uses **Hybrid Tables** for ACID transactions (10-50ms latency)
+- Full cart lifecycle managed by the agent, not hardcoded in frontend
+
+> 💡 *This positions Snowflake as a platform for the emerging ACP standard.*
+
+#### 5. Multi-Source Social Proof
+Unified semantic search across **reviews + influencers + social mentions**:
+- Customer reviews with skin tone/type metadata for personalized filtering
+- Influencer mentions with audience demographics
+- Trending products calculated from mention velocity
+
+> 💡 *Shows Cortex Search unifying disparate content sources into one semantic index.*
+
+#### 6. Embeddable Widget Architecture
+Production-ready deployment pattern for real-world use:
+- Single `<script>` tag embeds into any retailer website
+- Admin UI for **no-code customization** (colors, logo, welcome messages)
+- 12 pre-built industry themes (Sephora, Ulta, MAC, Glossier, etc.)
+
+> 💡 *Not just a demo — this is a deployable SaaS architecture pattern.*
+
+#### 7. Complete AI Stack in Snowflake
+**Zero external AI services required** — everything runs in Snowflake:
+
+| Capability | Snowflake Feature |
+|------------|------------------|
+| Face embeddings | SPCS + dlib ResNet |
+| Face matching | Cortex Vector Search |
+| Product discovery | Cortex Search |
+| Structured queries | Cortex Analyst |
+| Agent orchestration | Cortex Agent |
+| Label extraction | AI_EXTRACT |
+| Transactions | Hybrid Tables |
+
+> 💡 *Demonstrates Snowflake as a complete AI platform, not just a data warehouse.*
+
+### 📊 Demo Flow Summary
+
+```
+📸 Selfie Upload
+    ↓
+🔬 Face Analysis (skin tone, Monk shade, Fitzpatrick, undertone)
+    ↓
+🔍 Identity Check (Vector Search → "Are you Sarah?")
+    ↓
+✅ Email Verification (privacy-first, no data leak)
+    ↓
+🎨 Color-Matched Products (CIEDE2000 algorithm)
+    ↓
+⭐ Social Proof (reviews, influencer mentions)
+    ↓
+🛒 Agentic Checkout (ACP tools on Hybrid Tables)
+```
+
+### 🎯 Target Audience Positioning
+
+| Audience | Key Message |
+|----------|-------------|
+| **Retail/CPG Executives** | "AI-powered personalization without leaving Snowflake" |
+| **Solution Architects** | "16 Cortex tools orchestrated in one agent" |
+| **Data Engineers** | "Unified data + AI + transactions in one platform" |
+| **Product Leaders** | "From data warehouse to AI commerce platform" |
 
 ---
 
