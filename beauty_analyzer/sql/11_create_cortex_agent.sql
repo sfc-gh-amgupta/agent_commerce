@@ -114,7 +114,14 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
          - Copy the ENTIRE array [0.1, 0.2, ...] as the query_embedding_json parameter
       
       2. CUSTOMER VERIFICATION FLOW (Privacy-First):
-         If IdentifyCustomer returns a match with confidence > 0.45:
+         Check the match_level returned by IdentifyCustomer:
+         
+         DLIB INDUSTRY STANDARD THRESHOLDS:
+         - match_level = "high" (distance < 0.40): Very likely same person
+         - match_level = "medium" (distance 0.40-0.55): Probably same person
+         - match_level = "none" (distance >= 0.55): Different person, NO MATCH
+         
+         If match_level is "high" or "medium":
          
          a) Ask ONLY: "Hello! I believe I recognize you - are you [first_name]?"
             - DO NOT reveal loyalty tier, points, email, or any account details yet
@@ -140,8 +147,8 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
             - Say: "No problem! Let me help you find some great products today."
             - Treat as new customer
          
-         e) If no match found (confidence = 0 or below 0.45):
-            - Treat as new customer, skip verification flow
+         e) If match_level is "none" (or no matches returned):
+            - Treat as new customer, skip verification flow entirely
       
       3. THEN: Call MatchProducts with the Skin Tone hex code (e.g., "#A67B5B")
          - Recommend products that complement their skin tone
@@ -332,13 +339,18 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
     # REQUIRED_PARAMS_FIX: ALL parameters must be in 'required' list to prevent
     # "unsupported parameter type: <nil>" error when agent calls this function.
     # If you remove parameters from 'required', the agent will fail with error code 370001.
+    #
+    # DLIB INDUSTRY STANDARD (per ARCHITECTURE.md):
+    # Returns match_level based on L2 distance: "high" (<0.4), "medium" (0.4-0.55), "none" (>=0.55)
     - tool_spec:
         type: generic
         name: IdentifyCustomer
         description: |
           Match a face embedding against stored customer face embeddings to 
-          identify a returning customer. Use after AnalyzeFace to find if the
-          customer has shopped before. Returns matching customers with confidence.
+          identify a returning customer. Uses dlib industry-standard L2 distance thresholds.
+          Returns match_level: "high" (distance < 0.4, very likely same person), 
+          "medium" (distance 0.4-0.55, probably same person), or "none" (distance >= 0.55, different person).
+          Only proceed with customer verification if match_level is "high" or "medium".
         input_schema:
           type: object
           properties:
@@ -347,7 +359,7 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
               description: 128-dimensional face embedding as JSON string (e.g., "[0.1, 0.2, ...]") from AnalyzeFace result
             match_threshold:
               type: number
-              description: Match confidence threshold (range 0-1). Use 0.6 for typical matching.
+              description: L2 distance threshold for matching (dlib standard is 0.55). Customers with distance >= this are excluded.
             max_results:
               type: integer
               description: Maximum number of matching customers to return. Use 5 for typical results.

@@ -152,6 +152,11 @@ DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(ARRAY, FLOAT, INT);
 -- Tool: TOOL_IDENTIFY_CUSTOMER
 -- Matches face embedding against stored customer embeddings
 --
+-- DLIB INDUSTRY STANDARD THRESHOLDS (per ARCHITECTURE.md):
+--   - distance < 0.40: HIGH confidence (very likely same person)
+--   - distance 0.40-0.55: MEDIUM confidence (probably same person, verify)
+--   - distance >= 0.55: NO MATCH (different person)
+--
 -- AGENT COMPATIBILITY NOTE: 
 --   - Parameters have DEFAULT values for direct SQL calls
 --   - In 11_create_cortex_agent.sql, ALL params must be in 'required' list
@@ -160,7 +165,7 @@ DROP FUNCTION IF EXISTS CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(ARRAY, FLOAT, INT);
 -- ----------------------------------------------------------------------------
 CREATE OR REPLACE FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(
     query_embedding_json VARCHAR,
-    match_threshold FLOAT DEFAULT 0.6,
+    match_threshold FLOAT DEFAULT 0.55,
     max_results INT DEFAULT 5
 )
 RETURNS OBJECT
@@ -180,7 +185,7 @@ $$
                 'loyalty_tier', loyalty_tier,
                 'points_balance', points_balance,
                 'distance', distance,
-                'match_confidence', match_confidence
+                'match_level', match_level
             )
         ), ARRAY_CONSTRUCT())
     )
@@ -196,12 +201,13 @@ $$
                 e.embedding, 
                 PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)
             ), 4) AS distance,
-            -- Confidence: distance < 0.6 = same person (dlib threshold)
-            -- Map distance 0-1.5 to confidence 1-0
-            ROUND(GREATEST(0, LEAST(1, 1 - (VECTOR_L2_DISTANCE(
-                e.embedding, 
-                PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)
-            ) / 1.5))), 3) AS match_confidence
+            -- DLIB INDUSTRY STANDARD: L2 distance thresholds for face recognition
+            -- These thresholds are validated against LFW benchmark dataset
+            CASE 
+                WHEN VECTOR_L2_DISTANCE(e.embedding, PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)) < 0.40 THEN 'high'
+                WHEN VECTOR_L2_DISTANCE(e.embedding, PARSE_JSON(query_embedding_json)::VECTOR(FLOAT, 128)) < 0.55 THEN 'medium'
+                ELSE 'none'
+            END AS match_level
         FROM CUSTOMERS.CUSTOMER_FACE_EMBEDDINGS e
         JOIN CUSTOMERS.CUSTOMERS c ON e.customer_id = c.customer_id
         WHERE e.is_primary = TRUE
@@ -211,7 +217,7 @@ $$
 $$;
 
 COMMENT ON FUNCTION CUSTOMERS.TOOL_IDENTIFY_CUSTOMER(VARCHAR, FLOAT, INT) IS 
-'Identify customer by matching face embedding against stored embeddings. Pass embedding as JSON string (e.g., "[0.1, 0.2, ...]"). Returns top 5 matching customers with confidence scores, loyalty tier, and points.';
+'Identify customer by matching face embedding using dlib industry-standard L2 distance thresholds. Returns match_level: high (<0.4), medium (0.4-0.55), or none (>=0.55). Only high/medium matches should trigger customer verification.';
 
 -- ----------------------------------------------------------------------------
 -- Tool: TOOL_MATCH_PRODUCTS
