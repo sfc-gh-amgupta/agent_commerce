@@ -351,19 +351,20 @@ CREATE OR REPLACE AGENT UTIL.AGENTIC_COMMERCE_ASSISTANT
         type: generic
         name: AnalyzeFace
         description: |
-          Analyze a face image stored in Snowflake Stage. Extracts skin tone, lip color, 
-          undertone, Fitzpatrick type (1-6), Monk shade (1-10), and 128-dimensional face 
-          embedding for customer identification. Use when customer uploads a photo.
-          Returns: skin_hex, lip_hex, fitzpatrick_type, monk_shade, undertone, embedding_json.
-          The embedding_json can be passed directly to IdentifyCustomer.
+          Analyze a face image from base64 string. Extracts skin tone (hex), lip color,
+          undertone (warm/cool/neutral), Fitzpatrick type (1-6), Monk shade (1-10), and 
+          128-dimensional face embedding for customer identification.
+          Use this when you see "**Image Data (base64):**" in the message.
+          Returns: skin_hex, lip_hex, fitzpatrick_type, monk_shade, undertone, embedding.
+          The embedding can be passed directly to IdentifyCustomer as query_embedding_json.
         input_schema:
           type: object
           properties:
-            stage_path:
+            image_base64:
               type: string
-              description: Path to face image in Snowflake Stage (e.g., "@CUSTOMERS.FACE_UPLOAD_STAGE/abc123.jpg")
+              description: Base64-encoded image string (the raw base64 data starting with /9j/... for JPEG or iVBOR... for PNG)
           required:
-            - stage_path
+            - image_base64
     
     # REQUIRED_PARAMS_FIX: ALL parameters must be in 'required' list to prevent
     # "unsupported parameter type: <nil>" error when agent calls this function.
