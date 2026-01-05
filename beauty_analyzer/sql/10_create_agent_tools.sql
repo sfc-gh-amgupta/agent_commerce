@@ -74,8 +74,11 @@ RETURNS VARIANT
 LANGUAGE SQL
 AS
 $$
+    -- FIX: Agent may pass base64 with surrounding quotes, strip them using CHR(34)
     SELECT PARSE_JSON(
-        UTIL.ML_FACE_ANALYSIS_SERVICE!PREDICT(image_base64):"output_feature_0"::VARCHAR
+        UTIL.ML_FACE_ANALYSIS_SERVICE!PREDICT(
+            REPLACE(REPLACE(image_base64, CHR(34), ''), CHR(39), '')
+        ):"output_feature_0"::VARCHAR
     )
 $$;
 
