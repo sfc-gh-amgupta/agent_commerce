@@ -424,7 +424,7 @@ export function ChatWidget({ config = DEFAULT_CONFIG, onClose, onCartUpdate }: C
           <p className="widget-header-subtitle">by {config.retailer_name}</p>
         </div>
         <div className="widget-header-actions">
-          {/* Cart Button */}
+          {/* Cart Icon - UX_FIX (2026-01-04): Dynamic cart indicator */}
           <button 
             className="widget-cart-btn" 
             onClick={() => {
@@ -434,9 +434,10 @@ export function ChatWidget({ config = DEFAULT_CONFIG, onClose, onCartUpdate }: C
                 if (form) form.dispatchEvent(new Event('submit', { bubbles: true }));
               }, 100);
             }}
-            title="View cart"
+            title={`Cart (${cartCount} items)`}
           >
             🛒
+            {cartCount > 0 && <span className="cart-badge">{cartCount}</span>}
           </button>
           {/* Maximize/Minimize Button */}
           <button 

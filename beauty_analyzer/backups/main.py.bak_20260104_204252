@@ -318,28 +318,8 @@ async def invoke_cortex_agent_rest(
                 
                 # Extract structured products from multiple sources
                 extracted_products = []
-                product_lookup = {}  # UUID -> full product data (for Option 1 filtering)
                 customer_match = None
                 cart_update = None
-                
-                # OPTION 1 FIX: Parse products mentioned in agent's TEXT response
-                # Pattern: **Product Name** (ID: uuid) - $XX.XX
-                def parse_products_from_agent_text(text: str) -> list:
-                    """Extract product UUIDs mentioned in agent's formatted text."""
-                    import re
-                    # Match: **Product Name** (ID: uuid-here) - $price
-                    pattern = r'\*\*([^*]+)\*\*\s*\(ID:\s*([a-f0-9]{8}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{4}-[a-f0-9]{12})\)\s*-?\s*\$?([\d.]+)?'
-                    matches = re.findall(pattern, text, re.IGNORECASE)
-                    
-                    products = []
-                    for name, uuid, price in matches:
-                        products.append({
-                            "name": name.strip(),
-                            "product_id": uuid.lower(),
-                            "price": float(price) if price else 0
-                        })
-                    logger.info(f"📝 Parsed {len(products)} products from agent text (by UUID)")
-                    return products
                 
                 # Helper function to extract product from dict
                 def extract_product(item):
@@ -646,56 +626,8 @@ async def invoke_cortex_agent_rest(
                     if extracted_products:
                         logger.info(f"📦 Extracted {len(extracted_products)} products from text")
                 
-                # =================================================================
-                # OPTION 1 FIX: Filter products to match agent's recommendations
-                # =================================================================
-                # Build lookup from all products extracted from tools
-                for prod in extracted_products:
-                    pid = prod.get("product_id", "").lower()
-                    if pid and len(pid) == 36:  # Valid UUID
-                        product_lookup[pid] = prod
-                
-                logger.info(f"📦 Built product lookup with {len(product_lookup)} UUIDs from {len(extracted_products)} total products")
-                
-                # Parse products mentioned in agent's TEXT response
-                text_products = parse_products_from_agent_text(accumulated_text)
-                
-                # If agent mentioned specific products with UUIDs, filter to only those
-                if text_products:
-                    final_products = []
-                    for tp in text_products:
-                        uuid = tp["product_id"].lower()
-                        if uuid in product_lookup:
-                            # Use full data from tool results
-                            final_products.append(product_lookup[uuid])
-                            logger.info(f"✅ Matched product from text: {tp['name']} (ID: {uuid})")
-                        else:
-                            # UUID not in lookup - create minimal product from text
-                            logger.info(f"⚠️ Product UUID not in lookup, using text data: {tp['name']}")
-                            words = tp["name"].split()
-                            brand = words[0] if words else ""
-                            final_products.append({
-                                "product_id": uuid,
-                                "name": tp["name"],
-                                "brand": brand,
-                                "category": "",
-                                "swatch_hex": "#f0f0f0",
-                                "color_distance": 5,
-                                "price": tp.get("price", 0),
-                                "image_url": ""
-                            })
-                    
-                    if final_products:
-                        extracted_products = final_products
-                        logger.info(f"📦 Filtered to {len(extracted_products)} products matching agent text")
-                else:
-                    # No UUIDs in text - fall back to first 4 from tool results
-                    if extracted_products:
-                        logger.info(f"📦 No UUIDs in agent text, using first 4 from {len(extracted_products)} tool results")
-                        extracted_products = extracted_products[:4]
-                
                 if extracted_products:
-                    logger.info(f"📦 Final product count: {len(extracted_products)}")
+                    logger.info(f"📦 Extracted {len(extracted_products)} products total")
                 else:
                     logger.info(f"⚠️ No products extracted from {len(tool_results)} tool results, {len(tables)} tables, or text")
                 

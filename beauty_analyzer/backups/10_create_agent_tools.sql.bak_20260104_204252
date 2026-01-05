@@ -415,7 +415,7 @@ COMMENT ON PROCEDURE CART_OLTP.TOOL_CREATE_CART_SESSION(VARCHAR) IS
 --             session_id UUID is not in conversation history
 -- Fix: Use COALESCE to first try session_id lookup, then customer_id lookup.
 -- ----------------------------------------------------------------------------
-CREATE OR REPLACE FUNCTION CART_OLTP.TOOL_GET_CART_SESSION(session_id VARCHAR)
+CREATE OR REPLACE FUNCTION CART_OLTP.TOOL_GET_CART_SESSION(session_id_param VARCHAR)
 RETURNS VARIANT
 LANGUAGE SQL
 AS
@@ -440,7 +440,7 @@ $$
             WHERE ci.session_id = s.session_id
         ),
         'item_count', (
-            SELECT COUNT(*) FROM CART_OLTP.CART_ITEMS ci2 WHERE ci2.session_id = s.session_id
+            SELECT COUNT(*) FROM CART_OLTP.CART_ITEMS WHERE session_id = s.session_id
         ),
         'subtotal_cents', s.subtotal_cents,
         'total_cents', s.total_cents,
@@ -449,11 +449,11 @@ $$
     FROM CART_OLTP.CART_SESSIONS s
     WHERE s.session_id = COALESCE(
         -- First: try to find by exact session_id match
-        (SELECT cs.session_id FROM CART_OLTP.CART_SESSIONS cs WHERE cs.session_id = session_id LIMIT 1),
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS WHERE session_id = session_id_param LIMIT 1),
         -- Second: try to find most recent active cart by customer_id
-        (SELECT cs.session_id FROM CART_OLTP.CART_SESSIONS cs
-         WHERE cs.customer_id = session_id AND cs.status = 'active' 
-         ORDER BY cs.created_at DESC LIMIT 1)
+        (SELECT session_id FROM CART_OLTP.CART_SESSIONS 
+         WHERE customer_id = session_id_param AND status = 'active' 
+         ORDER BY created_at DESC LIMIT 1)
     )
 $$;
 

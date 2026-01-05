@@ -34,3 +34,5 @@ beauty_analyzer/data/generated/images/swatches/
 
 # Keep labels - all 2,000 included
 # Keep faces - 200 samples included
+# Large video files
+*.mp4
