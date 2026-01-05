@@ -60,10 +60,10 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
     │ Web App     │                   │                 │                │ Image Vector    │
     │ Mobile App  │  ┌──────────┐     │   Orchestrates  │    16 Tools    │   Embeddings    │
     │ Voice Agent │──│ REST API │────▶│   16 Tools      │ ─────────────▶ │ Cortex Search   │
-    │ Claude      │  │ MCP      │     │   Autonomously  │                │ Cortex Analyst  │
-    │ Desktop     │  │ OpenAI   │     │                 │                │ Hybrid Tables   │
-    │ VS Code     │  │ SDK      │     │                 │                │ ML Model (SPCS) │
-    └─────────────┘  └──────────┘     └─────────────────┘                └─────────────────┘
+    │ Claude      │  ├──────────┤     │   Autonomously  │                │ Cortex Analyst  │
+    │ Desktop     │  │   MCP    │     │                 │                │ Hybrid Tables   │
+    │ VS Code     │  └──────────┘     │                 │                │ ML Model (SPCS) │
+    └─────────────┘                   └─────────────────┘                └─────────────────┘
                                               │
                           ┌───────────────────┼───────────────────┐
                           │                   │                   │
