@@ -28,8 +28,8 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
 
 ## Table of Contents
 
-- [Salient & Differentiated Capabilities](#salient--differentiated-capabilities)
 - [Overview](#overview)
+- [Salient & Differentiated Capabilities](#salient--differentiated-capabilities)
 - [System Architecture](#system-architecture)
 - [Cortex Agent Design](#cortex-agent-design)
 - [Tool Catalog](#tool-catalog)
@@ -42,9 +42,9 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
 
 ---
 
-## Salient & Differentiated Capabilities
+## Overview
 
-> **Why this demo stands out:** Snowflake Agent Commerce showcases capabilities that are unique to the Snowflake platform and differentiated from typical commerce demos.
+> A fully agentic shopping experience where a Cortex Agent orchestrates 16 tools — from customer identification to product discovery to checkout — demonstrating Snowflake as an end-to-end AI commerce platform with open API interoperability.
 
 ### Architecture Overview
 
@@ -64,18 +64,61 @@ export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
     │ Claude      │                   │                 │                │ Hybrid Tables   │
     │             │                   │                 │                │ Model Serving   │
     └─────────────┘                   └─────────────────┘                └─────────────────┘
-                                              │
-                          ┌───────────────────┼───────────────────┐
-                          │                   │                   │
-                          ▼                   ▼                   ▼
-                    ┌──────────┐        ┌──────────┐        ┌──────────┐
-                    │ 🔐 AUTH  │        │ 🎨 DISCO-│        │ 🛒 TRANS-│
-                    │          │        │   VER    │        │   ACT    │
-                    │ Face ID  │        │ Search   │        │ ACP Cart │
-                    │ Loyalty  │        │ Match    │        │ Checkout │
-                    │ History  │        │ Reviews  │        │ Orders   │
-                    └──────────┘        └──────────┘        └──────────┘
 ```
+
+### Brief Description
+
+Snowflake Agent Commerce showcases how enterprises can build **agentic commerce experiences entirely within Snowflake** — where an AI agent autonomously handles the complete customer journey from recognition to purchase.
+
+**The Cortex Agent orchestrates:**
+
+- **Customer Intelligence** → Identity recognition, loyalty data, purchase history (Vector Search + Analyst)
+- **Product Discovery** → Semantic search, personalized recommendations, inventory checks (Cortex Search + Analyst)
+- **Social Proof** → Reviews, influencer mentions, trending products (Cortex Search)
+- **Transaction Processing** → Cart management, checkout, order creation (Hybrid Tables with ACID guarantees)
+
+### Why It Matters for Agent Commerce
+
+| | |
+|---|---|
+| 🤖 **True agentic orchestration** | Agent decides which tools to call, not hardcoded workflows |
+| 🛒 **ACP-compliant** | Implements OpenAI's Agentic Commerce Protocol (ACP_CreateCart, ACP_AddItem, ACP_Checkout) |
+| ⚡ **Real-time transactions** | Hybrid Tables enable 10-50ms cart operations with row-level locking |
+| 🔒 **Data stays in Snowflake** | No external AI calls; customer data never leaves the platform |
+| 🧩 **16 tools, one agent** | Analyst, Search, Vector Search, and custom UDFs unified under one orchestrator |
+
+### Interoperability & Integration
+
+| | |
+|---|---|
+| 🔌 **REST API** | Standard REST API enables any frontend (web, mobile, voice, embeddable widget) or existing commerce platform to invoke the agent |
+| 🔗 **MCP & OpenAI SDK Ready** | Deploy as a Model Context Protocol (MCP) server for Claude Desktop, VS Code Copilot, and MCP-compatible clients; also integrates with OpenAI SDK for seamless adoption in existing AI workflows |
+
+### The Vision
+
+**Agent Commerce is the future of retail** — where AI agents act on behalf of customers to browse, compare, and purchase. This demo proves Snowflake can power that entire stack: **data + AI + transactions in one platform**, with open standards for interoperability across the agentic ecosystem.
+
+### Technology Stack
+
+| Component | Technology |
+|-----------|------------|
+| **AI Brain** | Snowflake Cortex Agent |
+| **Frontend** | React.js Chatbot Widget (embeddable) |
+| **Backend** | FastAPI (Python) in SPCS |
+| **Face Detection** | MediaPipe Face Mesh (468 landmarks) |
+| **Face Recognition** | dlib ResNet (128-dim embeddings) |
+| **Customer Identification** | Image Vector Embeddings (ANN) |
+| **Product/Social Search** | Cortex Search (semantic) |
+| **Structured Queries** | Cortex Analyst + Semantic Views |
+| **Label Extraction** | AI_EXTRACT |
+| **Color Distance** | CIEDE2000 (ΔE00) |
+| **Deployment** | Snowpark Container Services (SPCS) |
+
+---
+
+## Salient & Differentiated Capabilities
+
+> **Why this demo stands out:** Snowflake Agent Commerce showcases capabilities that are unique to the Snowflake platform and differentiated from typical commerce demos.
 
 ### 🌟 Key Differentiators
 
@@ -172,80 +215,6 @@ Production-ready deployment pattern for real-world use:
 | **Solution Architects** | "16 Cortex tools orchestrated in one agent" |
 | **Data Engineers** | "Unified data + AI + transactions in one platform" |
 | **Product Leaders** | "From data warehouse to AI commerce platform" |
-
----
-
-## Overview
-
-> A fully agentic shopping experience where a Cortex Agent orchestrates 16 tools — from customer identification to product discovery to checkout — demonstrating Snowflake as an end-to-end AI commerce platform with open API interoperability.
-
-### Architecture Overview
-
-```
-┌─────────────────────────────────────────────────────────────────────────────┐
-│                      SNOWFLAKE AGENT COMMERCE                                │
-└─────────────────────────────────────────────────────────────────────────────┘
-
-     📱 Any Frontend                    🤖 Cortex Agent                    ❄️ Snowflake
-    ─────────────────                  ─────────────────                  ─────────────────
-    
-    ┌─────────────┐                   ┌─────────────────┐                ┌─────────────────┐
-    │ Web App     │                   │                 │                │ Image Vector    │
-    │ Mobile App  │    REST API       │   Orchestrates  │    16 Tools    │   Embeddings    │
-    │ Voice Agent │──────────────────▶│   16 Tools      │ ─────────────▶ │ Cortex Search   │
-    │ OpenAI SDK  │      MCP          │   Autonomously  │                │ Cortex Analyst  │
-    │ Claude      │                   │                 │                │ Hybrid Tables   │
-    │             │                   │                 │                │ Model Serving   │
-    └─────────────┘                   └─────────────────┘                └─────────────────┘
-```
-
-### Brief Description
-
-Snowflake Agent Commerce showcases how enterprises can build **agentic commerce experiences entirely within Snowflake** — where an AI agent autonomously handles the complete customer journey from recognition to purchase.
-
-**The Cortex Agent orchestrates:**
-
-- **Customer Intelligence** → Identity recognition, loyalty data, purchase history (Vector Search + Analyst)
-- **Product Discovery** → Semantic search, personalized recommendations, inventory checks (Cortex Search + Analyst)
-- **Social Proof** → Reviews, influencer mentions, trending products (Cortex Search)
-- **Transaction Processing** → Cart management, checkout, order creation (Hybrid Tables with ACID guarantees)
-
-### Why It Matters for Agent Commerce
-
-| | |
-|---|---|
-| 🤖 **True agentic orchestration** | Agent decides which tools to call, not hardcoded workflows |
-| 🛒 **ACP-compliant** | Implements OpenAI's Agentic Commerce Protocol (ACP_CreateCart, ACP_AddItem, ACP_Checkout) |
-| ⚡ **Real-time transactions** | Hybrid Tables enable 10-50ms cart operations with row-level locking |
-| 🔒 **Data stays in Snowflake** | No external AI calls; customer data never leaves the platform |
-| 🧩 **16 tools, one agent** | Analyst, Search, Vector Search, and custom UDFs unified under one orchestrator |
-
-### Interoperability & Integration
-
-| | |
-|---|---|
-| 🔌 **REST API** | Standard REST API enables any frontend (web, mobile, voice, embeddable widget) or existing commerce platform to invoke the agent |
-| 🔗 **MCP & OpenAI SDK Ready** | Deploy as a Model Context Protocol (MCP) server for Claude Desktop, VS Code Copilot, and MCP-compatible clients; also integrates with OpenAI SDK for seamless adoption in existing AI workflows |
-
-### The Vision
-
-**Agent Commerce is the future of retail** — where AI agents act on behalf of customers to browse, compare, and purchase. This demo proves Snowflake can power that entire stack: **data + AI + transactions in one platform**, with open standards for interoperability across the agentic ecosystem.
-
-### Technology Stack
-
-| Component | Technology |
-|-----------|------------|
-| **AI Brain** | Snowflake Cortex Agent |
-| **Frontend** | React.js Chatbot Widget (embeddable) |
-| **Backend** | FastAPI (Python) in SPCS |
-| **Face Detection** | MediaPipe Face Mesh (468 landmarks) |
-| **Face Recognition** | dlib ResNet (128-dim embeddings) |
-| **Customer Identification** | Image Vector Embeddings (ANN) |
-| **Product/Social Search** | Cortex Search (semantic) |
-| **Structured Queries** | Cortex Analyst + Semantic Views |
-| **Label Extraction** | AI_EXTRACT |
-| **Color Distance** | CIEDE2000 (ΔE00) |
-| **Deployment** | Snowpark Container Services (SPCS) |
 
 ---
 
