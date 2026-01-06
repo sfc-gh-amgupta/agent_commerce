@@ -1,113 +1,194 @@
-# Agent Commerce Demo
+# Snowflake Agent Commerce
 
-AI-powered shopping assistant built on Snowflake, featuring:
-- **Cortex Agent** - Conversational AI orchestration
-- **Face Recognition** - Customer identification via face embeddings
-- **Skin Analysis** - Color matching for cosmetics
-- **SPCS Backend** - ML inference in Snowpark Container Services
+> AI-Powered Commerce Assistant with Face Recognition, Skin Analysis, Product Matching, and ACP-Compliant Checkout
+> 
+> Powered by Snowflake Cortex Agent + Snowpark Container Services
 
-## 🚀 One-Click Deployment
+## Overview
 
-Deploy the entire demo using just Snowsight (no local tools required):
+> A fully agentic shopping experience where a Cortex Agent orchestrates 16 tools — from customer identification to product discovery to checkout — demonstrating Snowflake as an end-to-end AI commerce platform with open API interoperability.
 
-```sql
--- Run this in Snowsight:
--- beauty_analyzer/sql/00_deploy_from_github_complete.sql
-```
-
-This single script:
-1. Creates database, schemas, warehouse
-2. Clones this GitHub repo into Snowflake
-3. Loads all sample data (products, customers, inventory, etc.)
-4. Pulls Docker image from GitHub Container Registry
-5. Starts the SPCS backend service
-6. Creates Cortex services
-
-## 📁 Project Structure
+### Architecture Overview
 
 ```
-agent_commerce/
-├── beauty_analyzer/
-│   ├── sql/                          # SQL deployment scripts
-│   │   ├── 00_deploy_from_github_complete.sql  ← ONE-CLICK DEPLOY
-│   │   ├── 01_setup_database.sql
-│   │   ├── 02_create_tables.sql
-│   │   ├── 03_create_semantic_views.sql
-│   │   ├── 04_create_cortex_search.sql
-│   │   └── 05_create_vector_embedding_proc.sql
-│   ├── backend/                      # SPCS backend (FastAPI + dlib)
-│   │   ├── app/main.py
-│   │   ├── Dockerfile
-│   │   └── requirements-final.txt
-│   ├── data/generated/               # Sample data
-│   │   ├── csv/                      # 24 CSV files
-│   │   └── images/                   # Product images
-│   ├── sample_images/                # Hero images, face samples
-│   └── scripts/                      # Data generation scripts
-├── .github/workflows/                # CI/CD for Docker builds
-└── README.md
+┌─────────────────────────────────────────────────────────────────────────────┐
+│                      SNOWFLAKE AGENT COMMERCE                                │
+└─────────────────────────────────────────────────────────────────────────────┘
+
+     📱 Any Frontend                    🤖 Cortex Agent                    ❄️ Snowflake
+    ─────────────────                  ─────────────────                  ─────────────────
+    
+    ┌─────────────┐                   ┌─────────────────┐                ┌─────────────────┐
+    │ Web App     │                   │                 │                │ Image Vector    │
+    │ Mobile App  │    REST API       │   Orchestrates  │    16 Tools    │   Embeddings    │
+    │ Voice Agent │──────────────────▶│   16 Tools      │ ─────────────▶ │ Cortex Search   │
+    │ OpenAI SDK  │      MCP          │   Autonomously  │                │ Cortex Analyst  │
+    │ Claude      │                   │                 │                │ Hybrid Tables   │
+    │             │                   │                 │                │ Model Serving   │
+    └─────────────┘                   └─────────────────┘                └─────────────────┘
 ```
 
-## 🗄️ Data Model
+### Brief Description
 
-| Schema | Tables | Description |
-|--------|--------|-------------|
-| PRODUCTS | 8 tables | Product catalog, variants, pricing, ingredients |
-| CUSTOMERS | 3 tables | Customer profiles, face embeddings, skin analysis |
-| INVENTORY | 3 tables | Locations, stock levels, transactions |
-| SOCIAL | 3 tables | Reviews, social mentions, influencers |
-| CART_OLTP | 7 hybrid tables | Cart, orders, payments (transactional) |
+Snowflake Agent Commerce showcases how enterprises can build **agentic commerce experiences entirely within Snowflake** — where an AI agent autonomously handles the complete customer journey from recognition to purchase.
 
-## 🔧 Manual Deployment
+**The Cortex Agent orchestrates:**
 
-If you prefer step-by-step deployment:
+- **Customer Intelligence** → Identity recognition, loyalty data, purchase history (Vector Search + Analyst)
+- **Product Discovery** → Semantic search, personalized recommendations, inventory checks (Cortex Search + Analyst)
+- **Social Proof** → Reviews, influencer mentions, trending products (Cortex Search)
+- **Transaction Processing** → Cart management, checkout, order creation (Hybrid Tables with ACID guarantees)
 
-1. **Infrastructure**: `sql/01_setup_database.sql`
-2. **Tables**: `sql/02_create_tables.sql`
-3. **Semantic Views**: `sql/03_create_semantic_views.sql`
-4. **Cortex Search**: `sql/04_create_cortex_search.sql`
-5. **Vector Search**: `sql/05_create_vector_embedding_proc.sql`
-6. **Load Data**: `sql/06_load_sample_data.sql`
-7. **Deploy SPCS**: `sql/07b_deploy_from_github.sql`
+### Why It Matters for Agent Commerce
 
-## 🐳 Docker Image
+| | |
+|---|---|
+| 🤖 **True agentic orchestration** | Agent decides which tools to call, not hardcoded workflows |
+| 🛒 **ACP-compliant** | Implements OpenAI's Agentic Commerce Protocol (ACP_CreateCart, ACP_AddItem, ACP_Checkout) |
+| ⚡ **Real-time transactions** | Hybrid Tables enable 10-50ms cart operations with row-level locking |
+| 🔒 **Data stays in Snowflake** | No external AI calls; customer data never leaves the platform |
+| 🧩 **16 tools, one agent** | Analyst, Search, Vector Search, and custom UDFs unified under one orchestrator |
 
-The backend image is automatically built and pushed to GitHub Container Registry on every push to main:
+### Interoperability & Integration
 
-```
-ghcr.io/sfc-gh-amgupta/agent_commerce/agent-commerce-backend:latest
-```
+| | |
+|---|---|
+| 🔌 **REST API** | Standard REST API enables any frontend (web, mobile, voice, embeddable widget) or existing commerce platform to invoke the agent |
+| 🔗 **MCP & OpenAI SDK Ready** | Deploy as a Model Context Protocol (MCP) server for Claude Desktop, VS Code Copilot, and MCP-compatible clients; also integrates with OpenAI SDK for seamless adoption in existing AI workflows |
 
-## 📊 Sample Data
+### The Vision
 
-| Domain | Records |
-|--------|---------|
-| Products | 2,000 |
-| Variants | 8,000 |
-| Customers | 2,000 |
-| Reviews | 4,000 |
-| Orders | 822 |
-| **Total** | ~120,000+ |
+**Agent Commerce is the future of retail** — where AI agents act on behalf of customers to browse, compare, and purchase. This demo proves Snowflake can power that entire stack: **data + AI + transactions in one platform**, with open standards for interoperability across the agentic ecosystem.
 
-## 🛠️ Technologies
+### Technology Stack
 
-- **Snowflake Cortex**: Agent, Analyst, Search
-- **Snowpark Container Services**: ML inference
-- **dlib + MediaPipe**: Face recognition & skin analysis
-- **FastAPI**: Backend API
-- **React.js**: Frontend widget (coming soon)
-
-## 📝 License
-
-Apache 2.0
-
-## 🤝 Contributing
-
-1. Fork the repository
-2. Create a feature branch
-3. Submit a pull request
+| Component | Technology |
+|-----------|------------|
+| **AI Brain** | Snowflake Cortex Agent |
+| **Frontend** | React.js Chatbot Widget (embeddable) |
+| **Backend** | FastAPI (Python) in SPCS |
+| **Face Detection** | MediaPipe Face Mesh (468 landmarks) |
+| **Face Recognition** | dlib ResNet (128-dim embeddings) |
+| **Customer Identification** | Image Vector Embeddings (ANN) |
+| **Product/Social Search** | Cortex Search (semantic) |
+| **Structured Queries** | Cortex Analyst + Semantic Views |
+| **Label Extraction** | AI_EXTRACT |
+| **Color Distance** | CIEDE2000 (ΔE00) |
+| **Deployment** | Snowpark Container Services (SPCS) |
 
 ---
 
-Built with ❄️ Snowflake
+## Salient & Differentiated Capabilities
+
+> **Why this demo stands out:** Snowflake Agent Commerce showcases capabilities that are unique to the Snowflake platform and differentiated from typical commerce demos.
+
+### 🌟 Key Differentiators
+
+#### 1. Visual AI Commerce Experience
+Unlike typical chatbots that start with text, this demo leads with **visual AI**:
+- **Instant Face Recognition** → Identifies returning customers from a selfie (dlib 128-dim embeddings + Image Vector Embeddings)
+- **Scientific Skin Analysis** → Fitzpatrick type, Monk shade, undertone detection in seconds
+- **Privacy-First Verification** → Agent asks "Are you [Name]?" before revealing any account details
+
+> 💡 *Most commerce demos use email/login. This uses your face as the "password".*
+
+#### 2. Color Science Product Matching (CIEDE2000)
+Not just "similar products" but **perceptually accurate color matching**:
+- Uses **CIEDE2000 (ΔE00)** — the gold standard for human color perception
+- Matches products to detected skin tone in LAB color space
+- ΔE00 < 2.0 = imperceptible difference to human eye
+
+> 💡 *Generic demos use keyword search. This matches colors the way humans perceive them.*
+
+#### 3. 16 Cortex Agent Tools in One Demo
+A comprehensive showcase of **all Cortex capabilities** in a single orchestrated agent:
+
+| Tool Type | Count | Examples |
+|-----------|-------|----------|
+| **Cortex Analyst** | 5 | CustomerAnalyst, ProductAnalyst, InventoryAnalyst, SocialAnalyst, CheckoutAnalyst |
+| **Cortex Search** | 2 | ProductSearch, SocialSearch |
+| **Custom UDFs** | 3 | AnalyzeFace, IdentifyCustomer, MatchProducts |
+| **ACP Cart Tools** | 6 | ACP_CreateCart, ACP_AddItem, ACP_GetCart, ACP_UpdateItem, ACP_RemoveItem, ACP_Checkout |
+
+> 💡 *Most demos show 1-2 tools. This orchestrates 16 tools in a single conversation.*
+
+#### 4. ACP-Compliant Agentic Checkout
+Implements **OpenAI's Agentic Commerce Protocol (ACP)** natively on Snowflake:
+- `ACP_CreateCart` → `ACP_AddItem` → `ACP_GetCart` → `ACP_Checkout`
+- Uses **Hybrid Tables** for ACID transactions (10-50ms latency)
+- Full cart lifecycle managed by the agent, not hardcoded in frontend
+
+> 💡 *This positions Snowflake as a platform for the emerging ACP standard.*
+
+#### 5. Multi-Source Social Proof
+Unified semantic search across **reviews + influencers + social mentions**:
+- Customer reviews with skin tone/type metadata for personalized filtering
+- Influencer mentions with audience demographics
+- Trending products calculated from mention velocity
+
+> 💡 *Shows Cortex Search unifying disparate content sources into one semantic index.*
+
+#### 6. Embeddable Widget Architecture
+Production-ready deployment pattern for real-world use:
+- Single `<script>` tag embeds into any retailer website
+- Admin UI for **no-code customization** (colors, logo, welcome messages)
+- 12 pre-built industry themes (Sephora, Ulta, MAC, Glossier, etc.)
+
+> 💡 *Not just a demo — this is a deployable SaaS architecture pattern.*
+
+#### 7. Complete AI Stack in Snowflake
+**Zero external AI services required** — everything runs in Snowflake:
+
+| Capability | Snowflake Feature |
+|------------|------------------|
+| Face embeddings | SPCS + dlib ResNet |
+| Face matching | Image Vector Embeddings |
+| Product discovery | Cortex Search |
+| Structured queries | Cortex Analyst |
+| Agent orchestration | Cortex Agent |
+| Label extraction | AI_EXTRACT |
+| Transactions | Hybrid Tables |
+
+> 💡 *Demonstrates Snowflake as a complete AI platform, not just a data warehouse.*
+
+### 📊 Demo Flow Summary
+
+```
+📸 Selfie Upload
+    ↓
+🔬 Face Analysis (skin tone, Monk shade, Fitzpatrick, undertone)
+    ↓
+🔍 Identity Check (Image Vector Embeddings → "Are you Sarah?")
+    ↓
+✅ Email Verification (privacy-first, no data leak)
+    ↓
+🎨 Color-Matched Products (CIEDE2000 algorithm)
+    ↓
+⭐ Social Proof (reviews, influencer mentions)
+    ↓
+🛒 Agentic Checkout (ACP tools on Hybrid Tables)
+```
+
+### 🎯 Target Audience Positioning
+
+| Audience | Key Message |
+|----------|-------------|
+| **Retail/CPG Executives** | "AI-powered personalization without leaving Snowflake" |
+| **Solution Architects** | "16 Cortex tools orchestrated in one agent" |
+| **Data Engineers** | "Unified data + AI + transactions in one platform" |
+| **Product Leaders** | "From data warehouse to AI commerce platform" |
+
+---
+
+## Quick Start
+
+```bash
+# One-step deployment
+export SNOWFLAKE_USER="your_user" && export SNOWFLAKE_PASSWORD="your_pass"
+./deploy.sh
+```
+
+## Documentation
+
+For detailed architecture, tool catalog, data layer, and deployment guides, see [ARCHITECTURE.md](./ARCHITECTURE.md).
 
