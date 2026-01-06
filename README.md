@@ -20,9 +20,9 @@
     
     ┌─────────────┐                   ┌─────────────────┐                ┌─────────────────┐
     │ Web App     │                   │                 │                │ Image           │
-    │ Mobile App  │    REST API       │   Orchestrates  │    16 Tools    │   Embeddings    │
+    │ Mobile App  │    REST API       │   Orchestrates  │    16 Tools    │   Vectors       │
     │ Voice Agent │──────────────────▶│   16 Tools      │ ─────────────▶ │ Cortex Search   │
-    │ MCP Client  │   OpenAI SDK      │   Autonomously  │                │ Cortex Analyst  │
+    │ OpenAI SDK  │      MCP          │   Autonomously  │                │ Cortex Analyst  │
     │ Claude      │                   │                 │                │ Hybrid Tables   │
     │             │                   │                 │                │ Model Serving   │
     └─────────────┘                   └─────────────────┘                └─────────────────┘
